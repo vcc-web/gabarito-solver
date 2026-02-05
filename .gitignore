@@ -8,3 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
+student_exams/6o/backup
+student_exams/7oA/backup
+student_exams/7oV/backup
