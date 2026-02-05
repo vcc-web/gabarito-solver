@@ -57,20 +57,23 @@ def ordenar_cantos(pts):
 
 # --- DETECÇÃO DE COLUNAS ---
 
-def detectar_colunas(image, min_area=50000, min_aspect=2.0):
+def detectar_colunas(image, min_area=30000, min_aspect=2.0, expected_cols=5):
     """
     Detecta os retângulos das colunas de respostas na imagem.
 
-    Pipeline:
-      1. Grayscale + GaussianBlur
-      2. Canny edge detection
-      3. Dilatação para fechar gaps nas bordas
-      4. findContours + approxPolyDP para achar retângulos (4 vértices)
-      5. Filtra por aspect ratio (alto > largo)
+    Pipeline com múltiplas camadas de detecção:
+      1. Grayscale + GaussianBlur + Canny + dilatação
+      2. findContours (RETR_LIST) para não perder contornos internos
+      3. Filtra por aspect ratio, fill ratio e área mínima
+      4. De-duplica agrupando por center_x (tolerância 80px)
+      5. Se < expected_cols: usa cabeçalhos das colunas (retângulos baixos
+         e largos acima de cada coluna) para interpolar posições ausentes,
+         construindo retângulos sintéticos.
 
-    Retorna lista de contornos (4 vértices cada), ordenados da esquerda
+    Retorna lista de contornos (4 pontos cada), ordenados da esquerda
     para a direita.
     """
+    h_img, w_img = image.shape[:2]
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
 
@@ -81,33 +84,179 @@ def detectar_colunas(image, min_area=50000, min_aspect=2.0):
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
     edges = cv2.dilate(edges, kernel, iterations=2)
 
-    # Encontra contornos
-    cnts, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Encontra contornos (RETR_LIST para manter contornos internos
+    # quando bordas de colunas adjacentes se tocam)
+    cnts, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
-    colunas = []
+    # --- Camada 1: detectar colunas diretamente ---
+    column_candidates = []
     for c in cnts:
         area = cv2.contourArea(c)
         if area < min_area:
             continue
-
-        peri = cv2.arcLength(c, True)
-        approx = cv2.approxPolyDP(c, 0.02 * peri, True)
-
-        # Precisa ter exatamente 4 vértices (retângulo)
-        if len(approx) != 4:
-            continue
-
         x, y, w, h = cv2.boundingRect(c)
         aspect = h / max(w, 1)
+        if aspect < min_aspect:
+            continue
+        bbox_area = w * h
+        fill = area / bbox_area if bbox_area > 0 else 0
+        # fill_ratio > 0.5 garante que é um retângulo razoável,
+        # não apenas um contorno de borda (que teria fill ~0.25)
+        if fill < 0.5:
+            continue
+        cx = x + w // 2
+        column_candidates.append((cx, area, c, x, y, w, h))
 
-        # Filtro: colunas de gabarito são mais altas que largas
-        if aspect > min_aspect:
-            colunas.append(approx)
+    # De-duplicar: agrupar por center_x com tolerância de 80px
+    # (RETR_LIST gera contornos internos e externos para a mesma coluna)
+    column_candidates.sort(key=lambda item: item[0])
+    groups = []
+    for item in column_candidates:
+        cx = item[0]
+        placed = False
+        for g in groups:
+            g_mean_cx = np.mean([i[0] for i in g])
+            if abs(cx - g_mean_cx) < 80:
+                g.append(item)
+                placed = True
+                break
+        if not placed:
+            groups.append([item])
 
-    # Ordena da esquerda para a direita
-    colunas.sort(key=lambda c: cv2.boundingRect(c)[0])
+    # Manter o contorno de maior área em cada grupo
+    detected_cols = []
+    for g in groups:
+        best = max(g, key=lambda item: item[1])
+        detected_cols.append(best)
 
-    return colunas
+    detected_cols.sort(key=lambda item: item[0])
+
+    # Se temos o esperado, retornar direto
+    if len(detected_cols) >= expected_cols:
+        cols = [item[2] for item in detected_cols[:expected_cols]]
+        cols.sort(key=lambda c: cv2.boundingRect(c)[0])
+        return cols
+
+    # --- Camada 2: interpolar colunas ausentes via cabeçalhos ---
+    # Os cabeçalhos são retângulos baixos e largos acima de cada coluna.
+    # São SEMPRE detectados porque são pequenos e isolados.
+    header_candidates = []
+    for c in cnts:
+        area = cv2.contourArea(c)
+        if area < 12000 or area > 50000:
+            continue
+        x, y, w, h = cv2.boundingRect(c)
+        aspect = h / max(w, 1)
+        # Cabeçalhos: mais largos que altos (aspect < 0.8)
+        if aspect > 0.8 or aspect < 0.2:
+            continue
+        bbox_area = w * h
+        fill = area / bbox_area if bbox_area > 0 else 0
+        # Cabeçalhos são muito retangulares
+        if fill < 0.80:
+            continue
+        # Largura razoável para cabeçalho (entre 10% e 30% da imagem)
+        w_ratio = w / w_img
+        if w_ratio < 0.10 or w_ratio > 0.30:
+            continue
+        cx = x + w // 2
+        cy = y + h // 2
+        header_candidates.append((cx, cy, x, y, w, h, area, c))
+
+    # Agrupar cabeçalhos por y (mesma fila)
+    # Usa média do grupo para tolerância, porque a folha pode estar
+    # inclinada (~50px de variação entre cabeçalhos extremos)
+    header_candidates.sort(key=lambda item: item[1])
+    header_rows = []
+    for item in header_candidates:
+        cy = item[1]
+        placed = False
+        for row in header_rows:
+            row_mean_cy = np.mean([i[1] for i in row])
+            if abs(cy - row_mean_cy) < 60:
+                row.append(item)
+                placed = True
+                break
+        if not placed:
+            header_rows.append([item])
+
+    # De-duplicar cada fila por cx (tolerância 50px) e escolher a melhor fila
+    best_row = None
+    best_row_count = 0
+    for row in header_rows:
+        row.sort(key=lambda item: item[0])
+        deduped = []
+        for item in row:
+            placed = False
+            for g in deduped:
+                if abs(item[0] - g[0]) < 50:
+                    # Manter o de maior área
+                    if item[6] > g[6]:
+                        g[:] = list(item)
+                    placed = True
+                    break
+            if not placed:
+                deduped.append(list(item))
+
+        if len(deduped) > best_row_count and len(deduped) >= 3:
+            best_row = deduped
+            best_row_count = len(deduped)
+
+    if best_row is None or len(best_row) < 3:
+        # Sem cabeçalhos suficientes, retornar o que temos
+        return [item[2] for item in detected_cols]
+
+    best_row.sort(key=lambda item: item[0])
+
+    # Dimensões médias das colunas detectadas (para construir sintéticas)
+    if detected_cols:
+        avg_col_w = int(np.mean([item[5] for item in detected_cols]))
+        avg_col_h = int(np.mean([item[6] for item in detected_cols]))
+        avg_col_top = int(np.mean([item[4] for item in detected_cols]))
+    else:
+        # Estimar a partir dos cabeçalhos
+        avg_col_w = int(np.mean([h[4] for h in best_row]))
+        avg_col_h = int(avg_col_w * 4)
+        avg_col_top = int(np.mean([h[3] + h[5] for h in best_row]))
+
+    # Associar cada cabeçalho a uma coluna detectada ou criar sintética
+    all_columns = []
+    for hdr in best_row:
+        hdr_cx = hdr[0]
+        # Procurar coluna detectada mais próxima
+        matched = None
+        min_dist = 80
+        for det in detected_cols:
+            dist = abs(hdr_cx - det[0])
+            if dist < min_dist:
+                min_dist = dist
+                matched = det
+
+        if matched is not None:
+            all_columns.append(matched[2])
+        else:
+            # Construir retângulo sintético alinhado com o cabeçalho
+            x = hdr[2]
+            y = avg_col_top
+            w = avg_col_w
+            h = avg_col_h
+            # Garantir que não ultrapasse a imagem
+            x = max(0, x)
+            y = max(0, y)
+            if x + w > w_img:
+                w = w_img - x
+            if y + h > h_img:
+                h = h_img - y
+            synthetic = np.array([
+                [[x, y]],
+                [[x + w, y]],
+                [[x + w, y + h]],
+                [[x, y + h]]
+            ], dtype=np.int32)
+            all_columns.append(synthetic)
+
+    all_columns.sort(key=lambda c: cv2.boundingRect(c)[0])
+    return all_columns
 
 
 # --- TRANSFORMAÇÃO DE PERSPECTIVA ---
@@ -120,15 +269,30 @@ def warp_retangulo(image, contorno):
     Diferente de warpAffine (só corrige rotação no plano), warpPerspective
     corrige distorções de perspectiva causadas pela câmera em ângulo.
 
+    Aceita contornos com qualquer número de vértices (>= 4). Para contornos
+    com mais de 4 vértices, usa minAreaRect para extrair os 4 cantos do
+    retângulo mínimo que engloba o contorno.
+
     Args:
         image:     imagem original (full resolution)
-        contorno:  contorno com 4 vértices (da detecção)
+        contorno:  contorno com >= 4 vértices (da detecção)
 
     Returns:
         Imagem retificada (sem recorte de margens), ou None se falhar
     """
-    # Ordena os 4 cantos
-    ordered = ordenar_cantos(contorno)
+    # Normalizar contorno para (N, 2)
+    pts = contorno.reshape(-1, 2).astype(np.float32)
+
+    if len(pts) == 4:
+        # Contorno já é um quadrilátero — usar diretamente
+        ordered = ordenar_cantos(pts.reshape(4, 2))
+    else:
+        # Para contornos com mais vértices, usar minAreaRect
+        # para obter o retângulo mínimo rotacionado
+        rect = cv2.minAreaRect(pts)
+        box = cv2.boxPoints(rect)
+        ordered = ordenar_cantos(box)
+
     tl, tr, br, bl = ordered
 
     # Calcula dimensões do retângulo de saída
