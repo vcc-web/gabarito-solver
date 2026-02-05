@@ -562,7 +562,8 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
                 'score': student['score'],
                 'total': total_questions,
                 'percentage': round(student['score'] / total_questions * 100, 1) if total_questions > 0 else 0,
-                'missed_tags': list(student['missed_tags'])
+                'missed_tags': list(student['missed_tags']),
+                'answers': student.get('answers', {})
             })
     
     html_content = f"""<!DOCTYPE html>
@@ -822,11 +823,64 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
             align-items: center;
             transition: all 0.2s;
             border: 2px solid transparent;
+            cursor: pointer;
         }}
         
         .student-card:hover {{
             border-color: var(--primary);
             box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+        }}
+        
+        .student-card.expanded {{
+            grid-template-columns: 1fr;
+            border-color: var(--primary);
+        }}
+        
+        .student-card.expanded .student-main {{
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 20px;
+            align-items: center;
+        }}
+        
+        .student-main {{
+            display: contents;
+        }}
+        
+        .student-card.expanded .student-main {{
+            display: grid;
+        }}
+        
+        .student-details {{
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid var(--gray-200);
+        }}
+        
+        .student-card.expanded .student-details {{
+            display: block;
+        }}
+        
+        .missed-tags-full {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }}
+        
+        .missed-tag {{
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }}
+        
+        .no-missed {{
+            color: var(--success);
+            font-weight: 600;
         }}
         
         .student-info h4 {{
@@ -997,6 +1051,100 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
                 grid-template-columns: 1fr;
             }}
         }}
+        
+        /* Export buttons */
+        .export-btn {{
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }}
+        
+        .export-btn:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }}
+        
+        .export-btn.secondary {{
+            background: linear-gradient(135deg, var(--gray-600) 0%, var(--gray-800) 100%);
+        }}
+        
+        .export-btn.secondary:hover {{
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }}
+        
+        /* Edit table */
+        .edit-table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }}
+        
+        .edit-table th {{
+            background: var(--gray-800);
+            color: white;
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.8rem;
+            position: sticky;
+            top: 0;
+        }}
+        
+        .edit-table th.student-col {{
+            text-align: left;
+            min-width: 200px;
+        }}
+        
+        .edit-table td {{
+            padding: 8px;
+            border-bottom: 1px solid var(--gray-200);
+            text-align: center;
+        }}
+        
+        .edit-table td.student-name {{
+            text-align: left;
+            font-weight: 500;
+        }}
+        
+        .edit-table tr:hover {{
+            background: var(--gray-50);
+        }}
+        
+        .edit-table select {{
+            padding: 6px 10px;
+            border: 2px solid var(--gray-200);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            background: white;
+        }}
+        
+        .edit-table select:focus {{
+            outline: none;
+            border-color: var(--primary);
+        }}
+        
+        .edit-table select.modified {{
+            border-color: var(--warning);
+            background: #fef3c7;
+        }}
+        
+        .edit-table .class-badge {{
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }}
     </style>
 </head>
 <body>
@@ -1010,7 +1158,7 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
         <div class="filter-bar">
             <div class="filter-group">
                 <label>Class</label>
-                <select id="filterClass" onchange="filterStudents()">
+                <select id="filterClass" onchange="applyAllFilters()">
                     <option value="all">All Classes</option>
 """
     
@@ -1023,7 +1171,7 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
             
             <div class="filter-group">
                 <label>Score Range</label>
-                <select id="filterScore" onchange="filterStudents()">
+                <select id="filterScore" onchange="applyAllFilters()">
                     <option value="all">All Scores</option>
                     <option value="high">High (≥70%)</option>
                     <option value="medium">Medium (50-69%)</option>
@@ -1033,7 +1181,7 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
             
             <div class="filter-group">
                 <label>Search Student</label>
-                <input type="text" id="searchStudent" placeholder="Type name..." oninput="filterStudents()">
+                <input type="text" id="searchStudent" placeholder="Type name..." oninput="applyAllFilters()">
             </div>
             
             <div class="filter-stats">
@@ -1054,6 +1202,7 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
             <button class="tab" onclick="showSection('students')">👥 Students</button>
             <button class="tab" onclick="showSection('questions')">❓ Questions</button>
             <button class="tab" onclick="showSection('tags')">🏷️ Tags</button>
+            <button class="tab" onclick="showSection('edit')">✏️ Edit Results</button>
         </div>
         
         <!-- Overview Section -->
@@ -1099,6 +1248,18 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
             <h2 class="section-title">🏷️ Tag Analysis</h2>
             <div id="tagsContent"></div>
         </div>
+        
+        <!-- Edit Results Section -->
+        <div id="edit" class="section">
+            <h2 class="section-title">✏️ Edit Results</h2>
+            <p style="margin-bottom: 20px; color: var(--gray-600);">Manually correct detection errors. Changes are applied locally and can be exported.</p>
+            <div style="margin-bottom: 20px; display: flex; gap: 10px;">
+                <button onclick="exportResults()" class="export-btn">💾 Export to CSV</button>
+                <button onclick="exportResultsJSON()" class="export-btn secondary">📋 Export to JSON</button>
+                <span id="editStatus" style="margin-left: auto; color: var(--success); font-weight: 500;"></span>
+            </div>
+            <div id="editContent" style="overflow-x: auto;"></div>
+        </div>
     </div>
     
     <!-- Modal -->
@@ -1112,6 +1273,19 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
         const allStudents = """ + json.dumps(all_students_json) + """;
         const chartData = """ + json.dumps(chart_data) + """;
         const classData = """ + json.dumps({k: {'total_questions': v['total_questions'], 'question_stats': {str(q): s for q, s in v['question_stats'].items()}, 'tag_stats': v['tag_stats']} for k, v in all_class_data.items()}) + """;
+        const answerKeyData = """ + json.dumps({k: v.get('answer_key', {}) for k, v in all_class_data.items()}) + """;
+        const studentAnswersData = """ + json.dumps({s['name']: {'class': s['class'], 'answers': s.get('answers', {})} for s in all_students_json}) + """;
+        
+        // Chart instances for re-rendering
+        let chartInstances = {};
+        
+        // Editable data (copy of student answers)
+        let editableData = JSON.parse(JSON.stringify(allStudents.map(s => ({
+            name: s.name,
+            class: s.class,
+            answers: {...s.answers},
+            originalAnswers: {...s.answers}
+        }))));
         
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -1120,14 +1294,29 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
             renderCharts();
             renderQuestions();
             renderTags();
-            filterStudents();
+            renderEditTable();
+            applyAllFilters();
         });
+        
+        function applyAllFilters() {
+            filterStudents();
+            filterQuestions();
+            filterTags();
+            filterEditTable();
+            renderOverviewStats();
+            renderCharts();
+        }
         
         function showSection(sectionId) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.getElementById(sectionId).classList.add('active');
             event.target.classList.add('active');
+            
+            // Re-apply filters when switching tabs
+            filterStudents();
+            filterQuestions();
+            filterTags();
         }
         
         function filterStudents() {
@@ -1157,6 +1346,39 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
             document.getElementById('totalCount').textContent = allStudents.length;
         }
         
+        function filterQuestions() {
+            const classFilter = document.getElementById('filterClass').value;
+            document.querySelectorAll('#questionsContent .class-section').forEach(section => {
+                const sectionClass = section.dataset.class;
+                if (classFilter === 'all' || sectionClass === classFilter) {
+                    section.style.display = 'block';
+                } else {
+                    section.style.display = 'none';
+                }
+            });
+        }
+        
+        function filterTags() {
+            const classFilter = document.getElementById('filterClass').value;
+            document.querySelectorAll('#tagsContent .class-section').forEach(section => {
+                const sectionClass = section.dataset.class;
+                if (classFilter === 'all' || sectionClass === classFilter) {
+                    section.style.display = 'block';
+                } else {
+                    section.style.display = 'none';
+                }
+            });
+        }
+        
+        function toggleStudentCard(card) {
+            // Close any other expanded cards
+            document.querySelectorAll('.student-card.expanded').forEach(c => {
+                if (c !== card) c.classList.remove('expanded');
+            });
+            // Toggle this card
+            card.classList.toggle('expanded');
+        }
+        
         function renderStudents() {
             const grid = document.getElementById('studentsGrid');
             
@@ -1167,38 +1389,65 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
                 const scoreClass = s.percentage >= 70 ? 'high' : s.percentage >= 50 ? 'medium' : 'low';
                 const debugImg = `student_exams/${s.class}/debug_output/${s.name}_debug.jpg`;
                 const otsuImg = `student_exams/${s.class}/debug_output/${s.name}_otsu.jpg`;
-                const missedTags = s.missed_tags.length > 0 ? s.missed_tags.slice(0, 3).join(', ') + (s.missed_tags.length > 3 ? '...' : '') : 'None';
+                const missedPreview = s.missed_tags.length > 0 ? s.missed_tags.slice(0, 3).join(', ') + (s.missed_tags.length > 3 ? '...' : '') : 'None';
+                const missedTagsHtml = s.missed_tags.length > 0 
+                    ? s.missed_tags.map(t => `<span class="missed-tag">${t}</span>`).join('')
+                    : '<span class="no-missed">✓ No missed tags - Perfect understanding!</span>';
                 
                 return `
-                    <div class="student-card" data-class="${s.class}" data-percentage="${s.percentage}" data-name="${s.name}">
-                        <div class="student-info">
-                            <h4>${s.name}</h4>
-                            <span class="class-badge">${s.class}</span>
-                            <div class="tags"><strong>Missed:</strong> ${missedTags}</div>
+                    <div class="student-card" data-class="${s.class}" data-percentage="${s.percentage}" data-name="${s.name}" onclick="toggleStudentCard(this)">
+                        <div class="student-main">
+                            <div class="student-info">
+                                <h4>${s.name}</h4>
+                                <span class="class-badge">${s.class}</span>
+                                <div class="tags"><strong>Missed:</strong> ${missedPreview}</div>
+                            </div>
+                            <div class="student-score">
+                                <div class="score-circle ${scoreClass}">${s.percentage}%</div>
+                                <div class="score-label">${s.score}/${s.total}</div>
+                            </div>
+                            <div class="student-images">
+                                <img src="${debugImg}" onclick="event.stopPropagation(); openModal('${debugImg}')" alt="Debug" onerror="this.style.display='none'">
+                                <img src="${otsuImg}" onclick="event.stopPropagation(); openModal('${otsuImg}')" alt="Otsu" onerror="this.style.display='none'">
+                            </div>
                         </div>
-                        <div class="student-score">
-                            <div class="score-circle ${scoreClass}">${s.percentage}%</div>
-                            <div class="score-label">${s.score}/${s.total}</div>
-                        </div>
-                        <div class="student-images">
-                            <img src="${debugImg}" onclick="openModal('${debugImg}')" alt="Debug" onerror="this.style.display='none'">
-                            <img src="${otsuImg}" onclick="openModal('${otsuImg}')" alt="Otsu" onerror="this.style.display='none'">
+                        <div class="student-details">
+                            <strong>📌 All Missed Tags (${s.missed_tags.length}):</strong>
+                            <div class="missed-tags-full">
+                                ${missedTagsHtml}
+                            </div>
                         </div>
                     </div>
                 `;
             }).join('');
         }
         
+        function getFilteredStudents() {
+            const classFilter = document.getElementById('filterClass').value;
+            const scoreFilter = document.getElementById('filterScore').value;
+            const searchFilter = document.getElementById('searchStudent').value.toLowerCase();
+            
+            return allStudents.filter(s => {
+                if (classFilter !== 'all' && s.class !== classFilter) return false;
+                if (scoreFilter === 'high' && s.percentage < 70) return false;
+                if (scoreFilter === 'medium' && (s.percentage < 50 || s.percentage >= 70)) return false;
+                if (scoreFilter === 'low' && s.percentage >= 50) return false;
+                if (searchFilter && !s.name.toLowerCase().includes(searchFilter)) return false;
+                return true;
+            });
+        }
+        
         function renderOverviewStats() {
-            const totalStudents = allStudents.length;
-            const avgScore = allStudents.reduce((sum, s) => sum + s.percentage, 0) / totalStudents || 0;
-            const highPerformers = allStudents.filter(s => s.percentage >= 70).length;
-            const lowPerformers = allStudents.filter(s => s.percentage < 50).length;
+            const filtered = getFilteredStudents();
+            const totalStudents = filtered.length;
+            const avgScore = filtered.reduce((sum, s) => sum + s.percentage, 0) / totalStudents || 0;
+            const highPerformers = filtered.filter(s => s.percentage >= 70).length;
+            const lowPerformers = filtered.filter(s => s.percentage < 50).length;
             
             document.getElementById('overviewStats').innerHTML = `
                 <div class="stat-card">
                     <div class="stat-value">${totalStudents}</div>
-                    <div class="stat-label">Total Students</div>
+                    <div class="stat-label">Filtered Students</div>
                 </div>
                 <div class="stat-card success">
                     <div class="stat-value">${avgScore.toFixed(1)}%</div>
@@ -1216,19 +1465,27 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
         }
         
         function renderCharts() {
-            // Score Distribution
-            const classes = Object.keys(chartData);
+            const classFilter = document.getElementById('filterClass').value;
+            const filtered = getFilteredStudents();
+            
+            // Destroy existing charts
+            Object.values(chartInstances).forEach(chart => chart.destroy());
+            chartInstances = {};
+            
+            // Determine which classes to show
+            const classes = classFilter === 'all' ? Object.keys(chartData) : [classFilter];
             const colors = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
             
-            new Chart(document.getElementById('scoreDistChart'), {
+            // Score Distribution
+            chartInstances.scoreDist = new Chart(document.getElementById('scoreDistChart'), {
                 type: 'bar',
                 data: {
                     labels: ['0-20%', '21-40%', '41-60%', '61-80%', '81-100%'],
                     datasets: classes.map((c, i) => {
-                        const scores = chartData[c].scores;
+                        const classStudents = filtered.filter(s => s.class === c);
                         const bins = [0, 0, 0, 0, 0];
-                        scores.forEach(s => {
-                            const pct = s / classData[c].total_questions * 100;
+                        classStudents.forEach(s => {
+                            const pct = s.percentage;
                             if (pct <= 20) bins[0]++;
                             else if (pct <= 40) bins[1]++;
                             else if (pct <= 60) bins[2]++;
@@ -1249,13 +1506,20 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
                 }
             });
             
-            // Class Average
-            new Chart(document.getElementById('classAvgChart'), {
+            // Class Average (filtered)
+            const classAvgs = classes.map(c => {
+                const classStudents = filtered.filter(s => s.class === c);
+                return classStudents.length > 0 
+                    ? (classStudents.reduce((sum, s) => sum + s.percentage, 0) / classStudents.length).toFixed(1)
+                    : 0;
+            });
+            
+            chartInstances.classAvg = new Chart(document.getElementById('classAvgChart'), {
                 type: 'doughnut',
                 data: {
                     labels: classes,
                     datasets: [{
-                        data: classes.map(c => chartData[c].avg.toFixed(1)),
+                        data: classAvgs,
                         backgroundColor: colors
                     }]
                 },
@@ -1265,19 +1529,19 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
                         legend: { position: 'right' },
                         tooltip: {
                             callbacks: {
-                                label: ctx => `${ctx.label}: ${ctx.raw} avg score`
+                                label: ctx => `${ctx.label}: ${ctx.raw}% avg`
                             }
                         }
                     }
                 }
             });
             
-            // Question Accuracy (first class only for simplicity)
-            const firstClass = classes[0];
-            const qAcc = chartData[firstClass].question_accuracy;
+            // Question Accuracy (for selected class or first class)
+            const targetClass = classes[0];
+            const qAcc = chartData[targetClass].question_accuracy;
             const qLabels = Object.keys(qAcc).sort((a, b) => parseInt(a) - parseInt(b));
             
-            new Chart(document.getElementById('questionAccChart'), {
+            chartInstances.questionAcc = new Chart(document.getElementById('questionAccChart'), {
                 type: 'bar',
                 data: {
                     labels: qLabels.map(q => 'Q' + q),
@@ -1294,7 +1558,7 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
                 }
             });
             
-            // Tag Performance (combined across all classes)
+            // Tag Performance (combined across filtered classes)
             const allTags = {};
             classes.forEach(c => {
                 Object.entries(chartData[c].tag_accuracy).forEach(([tag, acc]) => {
@@ -1305,7 +1569,7 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
             const tagLabels = Object.keys(allTags);
             const tagAvgs = tagLabels.map(t => allTags[t].reduce((a, b) => a + b, 0) / allTags[t].length);
             
-            new Chart(document.getElementById('tagChart'), {
+            chartInstances.tagChart = new Chart(document.getElementById('tagChart'), {
                 type: 'radar',
                 data: {
                     labels: tagLabels,
@@ -1329,6 +1593,7 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
         function renderQuestions() {
             let html = '';
             Object.entries(classData).forEach(([className, data]) => {
+                html += `<div class="class-section" data-class="${className}">`;
                 html += `<h3 style="margin: 20px 0 10px; color: #4f46e5;">${className}</h3>`;
                 html += `<table><thead><tr><th>Question</th><th>Correct</th><th>Incorrect</th><th>Accuracy</th><th>Visual</th></tr></thead><tbody>`;
                 
@@ -1346,7 +1611,7 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
                         </tr>
                     `;
                 });
-                html += '</tbody></table>';
+                html += '</tbody></table></div>';
             });
             document.getElementById('questionsContent').innerHTML = html;
         }
@@ -1356,6 +1621,7 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
             Object.entries(classData).forEach(([className, data]) => {
                 if (Object.keys(data.tag_stats).length === 0) return;
                 
+                html += `<div class="class-section" data-class="${className}">`;
                 html += `<h3 style="margin: 20px 0 10px; color: #4f46e5;">${className}</h3>`;
                 html += `<table><thead><tr><th>Tag</th><th>Correct</th><th>Incorrect</th><th>Accuracy</th><th>Visual</th></tr></thead><tbody>`;
                 
@@ -1373,9 +1639,129 @@ def generate_dashboard(all_class_data, output_file='dashboard.html'):
                         </tr>
                     `;
                 });
-                html += '</tbody></table>';
+                html += '</tbody></table></div>';
             });
             document.getElementById('tagsContent').innerHTML = html || '<p>No tag data available.</p>';
+        }
+        
+        function renderEditTable() {
+            const totalQuestions = 25;
+            let html = '<table class="edit-table"><thead><tr><th class="student-col">Student</th>';
+            
+            for (let q = 1; q <= totalQuestions; q++) {
+                html += `<th>Q${q}</th>`;
+            }
+            html += '</tr></thead><tbody>';
+            
+            // Sort by class then name
+            const sorted = [...allStudents].sort((a, b) => {
+                if (a.class !== b.class) return a.class.localeCompare(b.class);
+                return a.name.localeCompare(b.name);
+            });
+            
+            sorted.forEach((student, idx) => {
+                html += `<tr data-class="${student.class}" data-name="${student.name}">`;
+                html += `<td class="student-name">${student.name}<span class="class-badge">${student.class}</span></td>`;
+                
+                for (let q = 1; q <= totalQuestions; q++) {
+                    const currentAnswer = student.answers ? student.answers[q] || '' : '';
+                    html += `<td>
+                        <select onchange="updateAnswer('${student.name}', ${q}, this.value, this)" data-original="${currentAnswer}">
+                            <option value="" ${currentAnswer === '' ? 'selected' : ''}>-</option>
+                            <option value="A" ${currentAnswer === 'A' ? 'selected' : ''}>A</option>
+                            <option value="B" ${currentAnswer === 'B' ? 'selected' : ''}>B</option>
+                            <option value="C" ${currentAnswer === 'C' ? 'selected' : ''}>C</option>
+                            <option value="D" ${currentAnswer === 'D' ? 'selected' : ''}>D</option>
+                            <option value="E" ${currentAnswer === 'E' ? 'selected' : ''}>E</option>
+                        </select>
+                    </td>`;
+                }
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            document.getElementById('editContent').innerHTML = html;
+        }
+        
+        function filterEditTable() {
+            const classFilter = document.getElementById('filterClass').value;
+            const searchFilter = document.getElementById('searchStudent').value.toLowerCase();
+            
+            document.querySelectorAll('#editContent tbody tr').forEach(row => {
+                const rowClass = row.dataset.class;
+                const name = row.dataset.name.toLowerCase();
+                
+                let show = true;
+                if (classFilter !== 'all' && rowClass !== classFilter) show = false;
+                if (searchFilter && !name.includes(searchFilter)) show = false;
+                
+                row.style.display = show ? '' : 'none';
+            });
+        }
+        
+        function updateAnswer(studentName, questionNum, newValue, selectEl) {
+            // Find and update the student in allStudents
+            const student = allStudents.find(s => s.name === studentName);
+            if (student) {
+                if (!student.answers) student.answers = {};
+                student.answers[questionNum] = newValue;
+                
+                // Mark as modified if different from original
+                const original = selectEl.dataset.original;
+                if (newValue !== original) {
+                    selectEl.classList.add('modified');
+                } else {
+                    selectEl.classList.remove('modified');
+                }
+                
+                document.getElementById('editStatus').textContent = 'Changes pending...';
+            }
+        }
+        
+        function exportResults() {
+            let csv = 'Name,Class,Score,Total,Percentage';
+            for (let q = 1; q <= 25; q++) csv += `,Q${q}`;
+            csv += '\\n';
+            
+            allStudents.forEach(s => {
+                const answers = s.answers || {};
+                csv += `"${s.name}","${s.class}",${s.score},${s.total},${s.percentage}`;
+                for (let q = 1; q <= 25; q++) {
+                    csv += `,${answers[q] || ''}`;
+                }
+                csv += '\\n';
+            });
+            
+            downloadFile(csv, 'exam_results_edited.csv', 'text/csv');
+            document.getElementById('editStatus').textContent = '✅ CSV exported!';
+        }
+        
+        function exportResultsJSON() {
+            const data = allStudents.map(s => ({
+                name: s.name,
+                class: s.class,
+                score: s.score,
+                total: s.total,
+                percentage: s.percentage,
+                answers: s.answers || {},
+                missed_tags: s.missed_tags
+            }));
+            
+            const json = JSON.stringify(data, null, 2);
+            downloadFile(json, 'exam_results_edited.json', 'application/json');
+            document.getElementById('editStatus').textContent = '✅ JSON exported!';
+        }
+        
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
         
         function openModal(imgSrc) {
@@ -1516,11 +1902,12 @@ def main():
             student_data['Missed Tags'] = ', '.join(sorted(missed_tags)) if missed_tags else 'None'
             class_results.append(student_data)
             
-            # Store for dashboard
+            # Store for dashboard (include answers for edit functionality)
             student_data_list.append({
                 'name': s_name,
                 'score': score,
-                'missed_tags': sorted(missed_tags)
+                'missed_tags': sorted(missed_tags),
+                'answers': {int(k): v for k, v in answers.items()}
             })
 
         # 7. Save Class CSV

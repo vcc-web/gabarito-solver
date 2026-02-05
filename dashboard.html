@@ -255,11 +255,64 @@
             align-items: center;
             transition: all 0.2s;
             border: 2px solid transparent;
+            cursor: pointer;
         }
         
         .student-card:hover {
             border-color: var(--primary);
             box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+        }
+        
+        .student-card.expanded {
+            grid-template-columns: 1fr;
+            border-color: var(--primary);
+        }
+        
+        .student-card.expanded .student-main {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .student-main {
+            display: contents;
+        }
+        
+        .student-card.expanded .student-main {
+            display: grid;
+        }
+        
+        .student-details {
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid var(--gray-200);
+        }
+        
+        .student-card.expanded .student-details {
+            display: block;
+        }
+        
+        .missed-tags-full {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .missed-tag {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        .no-missed {
+            color: var(--success);
+            font-weight: 600;
         }
         
         .student-info h4 {
@@ -430,20 +483,114 @@
                 grid-template-columns: 1fr;
             }
         }
+        
+        /* Export buttons */
+        .export-btn {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+        
+        .export-btn.secondary {
+            background: linear-gradient(135deg, var(--gray-600) 0%, var(--gray-800) 100%);
+        }
+        
+        .export-btn.secondary:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Edit table */
+        .edit-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        
+        .edit-table th {
+            background: var(--gray-800);
+            color: white;
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.8rem;
+            position: sticky;
+            top: 0;
+        }
+        
+        .edit-table th.student-col {
+            text-align: left;
+            min-width: 200px;
+        }
+        
+        .edit-table td {
+            padding: 8px;
+            border-bottom: 1px solid var(--gray-200);
+            text-align: center;
+        }
+        
+        .edit-table td.student-name {
+            text-align: left;
+            font-weight: 500;
+        }
+        
+        .edit-table tr:hover {
+            background: var(--gray-50);
+        }
+        
+        .edit-table select {
+            padding: 6px 10px;
+            border: 2px solid var(--gray-200);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            background: white;
+        }
+        
+        .edit-table select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .edit-table select.modified {
+            border-color: var(--warning);
+            background: #fef3c7;
+        }
+        
+        .edit-table .class-badge {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>📊 Exam Results Dashboard</h1>
-            <p class="subtitle">Generated on February 04, 2026 at 23:43</p>
+            <p class="subtitle">Generated on February 04, 2026 at 23:54</p>
         </header>
         
         <!-- Filter Bar -->
         <div class="filter-bar">
             <div class="filter-group">
                 <label>Class</label>
-                <select id="filterClass" onchange="filterStudents()">
+                <select id="filterClass" onchange="applyAllFilters()">
                     <option value="all">All Classes</option>
                     <option value="6o">6o</option>
                     <option value="7oA">7oA</option>
@@ -454,7 +601,7 @@
             
             <div class="filter-group">
                 <label>Score Range</label>
-                <select id="filterScore" onchange="filterStudents()">
+                <select id="filterScore" onchange="applyAllFilters()">
                     <option value="all">All Scores</option>
                     <option value="high">High (≥70%)</option>
                     <option value="medium">Medium (50-69%)</option>
@@ -464,7 +611,7 @@
             
             <div class="filter-group">
                 <label>Search Student</label>
-                <input type="text" id="searchStudent" placeholder="Type name..." oninput="filterStudents()">
+                <input type="text" id="searchStudent" placeholder="Type name..." oninput="applyAllFilters()">
             </div>
             
             <div class="filter-stats">
@@ -485,6 +632,7 @@
             <button class="tab" onclick="showSection('students')">👥 Students</button>
             <button class="tab" onclick="showSection('questions')">❓ Questions</button>
             <button class="tab" onclick="showSection('tags')">🏷️ Tags</button>
+            <button class="tab" onclick="showSection('edit')">✏️ Edit Results</button>
         </div>
         
         <!-- Overview Section -->
@@ -530,6 +678,18 @@
             <h2 class="section-title">🏷️ Tag Analysis</h2>
             <div id="tagsContent"></div>
         </div>
+        
+        <!-- Edit Results Section -->
+        <div id="edit" class="section">
+            <h2 class="section-title">✏️ Edit Results</h2>
+            <p style="margin-bottom: 20px; color: var(--gray-600);">Manually correct detection errors. Changes are applied locally and can be exported.</p>
+            <div style="margin-bottom: 20px; display: flex; gap: 10px;">
+                <button onclick="exportResults()" class="export-btn">💾 Export to CSV</button>
+                <button onclick="exportResultsJSON()" class="export-btn secondary">📋 Export to JSON</button>
+                <span id="editStatus" style="margin-left: auto; color: var(--success); font-weight: 500;"></span>
+            </div>
+            <div id="editContent" style="overflow-x: auto;"></div>
+        </div>
     </div>
     
     <!-- Modal -->
@@ -540,9 +700,22 @@
     
     <script>
         // Data
-        const allStudents = [{"name": "Andr\u00e9 Drumond Biondi", "class": "6o", "score": 20, "total": 25, "percentage": 80.0, "missed_tags": ["Divis\u00e3o", "Geometria", "Interpreta\u00e7\u00e3o", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Subtra\u00e7\u00e3o", "\u00c1lgebra"]}, {"name": "Clara Maria Gomes Assun\u00e7\u00e3o", "class": "6o", "score": 7, "total": 25, "percentage": 28.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Per\u00edmetro", "Plano Cartesiano", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "Unidades de Medida", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Francisco Rocha de Carvalho e Mello", "class": "6o", "score": 13, "total": 25, "percentage": 52.0, "missed_tags": ["Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Per\u00edmetro", "Plano Cartesiano", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Giovanna Rafaela Francisco Amaral", "class": "6o", "score": 13, "total": 25, "percentage": 52.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pontos", "Porcentagem", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Helena Pinheiro Marra", "class": "6o", "score": 11, "total": 25, "percentage": 44.0, "missed_tags": ["Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Jo\u00e3o Vitor Belote Amorim Grecov", "class": "6o", "score": 8, "total": 25, "percentage": 32.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Per\u00edmetro", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Lucas Soares de Assis", "class": "6o", "score": 14, "total": 25, "percentage": 56.0, "missed_tags": ["Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Per\u00edmetro", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra"]}, {"name": "Manuela Guimar\u00e3es do Amaral Dantas", "class": "6o", "score": 21, "total": 25, "percentage": 84.0, "missed_tags": ["Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pontos", "\u00c1lgebra"]}, {"name": "Maria Fernanda Coutinho Carneiro Braz", "class": "6o", "score": 11, "total": 25, "percentage": 44.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra"]}, {"name": "Maria Luiza Esp\u00edrito Santo Silva", "class": "6o", "score": 9, "total": 25, "percentage": 36.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "Unidades de Medida", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Mariana Soares Barboza Vivas Rocha", "class": "6o", "score": 9, "total": 25, "percentage": 36.0, "missed_tags": ["Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "Unidades de Medida", "\u00c1lgebra"]}, {"name": "Miguel Augusto Stuart Fonseca", "class": "6o", "score": 12, "total": 25, "percentage": 48.0, "missed_tags": ["Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pontos", "Porcentagem", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Pedro Bueno Sanches", "class": "6o", "score": 15, "total": 25, "percentage": 60.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Pedro Lima garcia Neves", "class": "6o", "score": 12, "total": 25, "percentage": 48.0, "missed_tags": ["Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Rafael Calazans Liboredo Peres Starling", "class": "6o", "score": 10, "total": 25, "percentage": 40.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Subtra\u00e7\u00e3o", "Unidades de Medida", "\u00c1lgebra"]}, {"name": "Sofia Junqueira Rodrigues Almeida", "class": "6o", "score": 1, "total": 25, "percentage": 4.0, "missed_tags": ["Adi\u00e7\u00e3o", "Classifica\u00e7\u00e3o de \u00c2ngulos", "Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Per\u00edmetro", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "Unidades de Medida", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Tain\u00e1 Medeiros Lopes", "class": "6o", "score": 10, "total": 25, "percentage": 40.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Ana Clara Evaristo Barbosa", "class": "7oA", "score": 6, "total": 25, "percentage": 24.0, "missed_tags": ["Adi\u00e7\u00e3o", "Classifica\u00e7\u00e3o de Retas", "Classifica\u00e7\u00e3o de \u00c2ngulos", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pontos", "Porcentagem", "Pot\u00eancia", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Ana Liz Drumond Ribeiro", "class": "7oA", "score": 20, "total": 25, "percentage": 80.0, "missed_tags": ["Divis\u00e3o", "Fra\u00e7\u00f5es", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pontos", "Porcentagem", "Subtra\u00e7\u00e3o", "\u00c1lgebra"]}, {"name": "Bianca Santiago Reis Souza", "class": "7oA", "score": 21, "total": 25, "percentage": 84.0, "missed_tags": ["Divis\u00e3o", "Fra\u00e7\u00f5es", "MDC", "MMC", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pontos", "\u00c1lgebra"]}, {"name": "Cec\u00edlia Assun\u00e7\u00e3o de Oliveira", "class": "7oA", "score": 12, "total": 25, "percentage": 48.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra"]}, {"name": "Clara Fernandes Gutstein Nunes", "class": "7oA", "score": 9, "total": 25, "percentage": 36.0, "missed_tags": ["Adi\u00e7\u00e3o", "Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Pot\u00eancia", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Clara Maria Santos de Oliveira", "class": "7oA", "score": 14, "total": 25, "percentage": 56.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Subtra\u00e7\u00e3o", "Unidades de Medida", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Isabella Cabral Contaifer", "class": "7oA", "score": 6, "total": 25, "percentage": 24.0, "missed_tags": ["Adi\u00e7\u00e3o", "Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Per\u00edmetro", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Pot\u00eancia", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Isabelle de Oliveira Vieira", "class": "7oA", "score": 10, "total": 25, "percentage": 40.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Per\u00edmetro", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Manuela Gomes Tanure de Matos", "class": "7oA", "score": 11, "total": 25, "percentage": 44.0, "missed_tags": ["Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Pot\u00eancia", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Maria Fernanda Soares Valadares", "class": "7oA", "score": 4, "total": 25, "percentage": 16.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Per\u00edmetro", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Pot\u00eancia", "Soma", "Subtra\u00e7\u00e3o", "Unidades de Medida", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Mariana Moreira Cabral", "class": "7oA", "score": 10, "total": 25, "percentage": 40.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Subtra\u00e7\u00e3o", "Unidades de Medida", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Talita Leonel Castro", "class": "7oA", "score": 13, "total": 25, "percentage": 52.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Classifica\u00e7\u00e3o de \u00c2ngulos", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "N\u00fameros Mistos", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Pot\u00eancia", "Subtra\u00e7\u00e3o", "\u00c1lgebra"]}, {"name": "Yasmin Ferreira Souza", "class": "7oA", "score": 10, "total": 25, "percentage": 40.0, "missed_tags": ["Adi\u00e7\u00e3o", "Classifica\u00e7\u00e3o de Retas", "Classifica\u00e7\u00e3o de \u00c2ngulos", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Per\u00edmetro", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Angelus Ribeiro do Amaral", "class": "7oV", "score": 20, "total": 25, "percentage": 80.0, "missed_tags": ["Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Pol\u00edgonos", "Porcentagem", "Subtra\u00e7\u00e3o", "\u00c1lgebra"]}, {"name": "Caio Alves Ara\u00fajo de Oliveira", "class": "7oV", "score": 14, "total": 25, "percentage": 56.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Pot\u00eancia", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Davi de Carvalho Ara\u00fajo", "class": "7oV", "score": 13, "total": 25, "percentage": 52.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Per\u00edmetro", "Plano Cartesiano", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Felipe Ferriera Requeijo", "class": "7oV", "score": 12, "total": 25, "percentage": 48.0, "missed_tags": ["Classifica\u00e7\u00e3o de \u00c2ngulos", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Per\u00edmetro", "Plano Cartesiano", "Pontos", "Porcentagem", "Pot\u00eancia", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Jo\u00e3o Ara\u00fajo de Oliveira", "class": "7oV", "score": 16, "total": 25, "percentage": 64.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Pot\u00eancia", "Subtra\u00e7\u00e3o", "\u00c1lgebra"]}, {"name": "Luca Alves Ara\u00fajo de Oliveira", "class": "7oV", "score": 20, "total": 25, "percentage": 80.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Classifica\u00e7\u00e3o de \u00c2ngulos", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pontos", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra"]}, {"name": "Nicolas Emanuel Perez Diaz", "class": "7oV", "score": 16, "total": 25, "percentage": 64.0, "missed_tags": ["Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Pot\u00eancia", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Rafael Claro Vieira", "class": "7oV", "score": 16, "total": 25, "percentage": 64.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Multiplica\u00e7\u00e3o", "Porcentagem", "Pot\u00eancia", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}, {"name": "Vitor Botelho Silva", "class": "7oV", "score": 14, "total": 25, "percentage": 56.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Pot\u00eancia", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"]}];
+        const allStudents = [{"name": "Andr\u00e9 Drumond Biondi", "class": "6o", "score": 20, "total": 25, "percentage": 80.0, "missed_tags": ["Divis\u00e3o", "Geometria", "Interpreta\u00e7\u00e3o", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Subtra\u00e7\u00e3o", "\u00c1lgebra"], "answers": {"1": "D", "2": "D", "3": "B", "4": "A", "5": "E", "6": "A", "7": "B", "8": "D", "9": "D", "10": "C", "11": "A", "12": "E", "13": "A", "14": "D", "15": "B", "16": "C", "17": "C", "18": "E", "19": "C", "20": "E", "21": "A", "22": "D", "23": "B", "24": "C", "25": "D"}}, {"name": "Clara Maria Gomes Assun\u00e7\u00e3o", "class": "6o", "score": 7, "total": 25, "percentage": 28.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Per\u00edmetro", "Plano Cartesiano", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "Unidades de Medida", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "B", "2": "C", "3": "E", "4": "E", "5": "E", "6": "E", "7": "C", "8": "C", "9": "E", "10": "E", "11": "B", "12": "D", "13": "B", "14": "C", "15": "D", "16": "C", "17": "A", "18": "B", "19": "B", "20": "C", "21": "A", "22": "D", "23": "B", "24": "D", "25": "D"}}, {"name": "Francisco Rocha de Carvalho e Mello", "class": "6o", "score": 13, "total": 25, "percentage": 52.0, "missed_tags": ["Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Per\u00edmetro", "Plano Cartesiano", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "A", "2": "B", "3": "E", "4": "C", "5": "E", "6": "C", "7": "A", "8": "E", "9": "B", "10": "B", "11": "E", "12": "E", "13": "D", "14": "D", "15": "B", "16": "C", "17": "D", "18": "E", "19": "C", "20": "E", "21": "A", "22": "D", "23": "B", "24": "D", "25": "D"}}, {"name": "Giovanna Rafaela Francisco Amaral", "class": "6o", "score": 13, "total": 25, "percentage": 52.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pontos", "Porcentagem", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "A", "2": "E", "3": "E", "4": "A", "5": "E", "6": "D", "7": "C", "8": "A", "9": "D", "10": "C", "11": "D", "12": "E", "13": "B", "14": "A", "15": "C", "16": "C", "17": "D", "18": "E", "19": "C", "20": "E", "21": "A", "22": "D", "23": "B", "24": "D", "25": "D"}}, {"name": "Helena Pinheiro Marra", "class": "6o", "score": 11, "total": 25, "percentage": 44.0, "missed_tags": ["Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "A", "2": "B", "3": "E", "4": "C", "5": "E", "6": "D", "7": "E", "8": "D", "9": "D", "10": "B", "11": "C", "12": "E", "13": "B", "14": "D", "15": "B", "16": "E", "17": "B", "18": "B", "19": "A", "20": "E", "21": "A", "22": "D", "23": "B", "24": "D", "25": "D"}}, {"name": "Jo\u00e3o Vitor Belote Amorim Grecov", "class": "6o", "score": 8, "total": 25, "percentage": 32.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Per\u00edmetro", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "E", "2": "C", "3": "A", "4": "B", "5": "E", "6": "D", "7": "A", "8": "A", "9": "B", "10": "D", "11": "E", "12": "E", "13": "B", "14": "D", "15": "A", "16": "C", "17": "D", "18": "B", "19": "E", "20": "E", "21": "A", "22": "D", "23": "B", "24": "E", "25": "D"}}, {"name": "Lucas Soares de Assis", "class": "6o", "score": 14, "total": 25, "percentage": 56.0, "missed_tags": ["Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Per\u00edmetro", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra"], "answers": {"1": "D", "2": "D", "3": "D", "4": "A", "5": "E", "6": "D", "7": "B", "8": "B", "9": "E", "10": "C", "11": "E", "12": "E", "13": "D", "14": "E", "15": "B", "16": "C", "17": "E", "18": "E", "19": "D", "20": "E", "21": "A", "22": "D", "23": "B", "24": "C", "25": "D"}}, {"name": "Manuela Guimar\u00e3es do Amaral Dantas", "class": "6o", "score": 21, "total": 25, "percentage": 84.0, "missed_tags": ["Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pontos", "\u00c1lgebra"], "answers": {"1": "D", "2": "D", "3": "B", "4": "A", "5": "C", "6": "D", "7": "B", "8": "C", "9": "D", "10": "C", "11": "A", "12": "E", "13": "D", "14": "D", "15": "B", "16": "C", "17": "B", "18": "B", "19": "C", "20": "E", "21": "A", "22": "D", "23": "B", "24": "D", "25": "D"}}, {"name": "Maria Fernanda Coutinho Carneiro Braz", "class": "6o", "score": 11, "total": 25, "percentage": 44.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra"], "answers": {"1": "A", "2": "E", "3": "C", "4": "E", "5": "E", "6": "A", "7": "B", "8": "E", "9": "D", "10": "C", "11": "D", "12": "E", "13": "A", "14": "A", "15": "C", "16": "E", "17": "A", "18": "B", "19": "D", "20": "E", "21": "A", "22": "D", "23": "B", "24": "D", "25": "D"}}, {"name": "Maria Luiza Esp\u00edrito Santo Silva", "class": "6o", "score": 9, "total": 25, "percentage": 36.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "Unidades de Medida", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "A", "2": "B", "3": "E", "4": "C", "5": "E", "6": "B", "7": "A", "8": "B", "9": "D", "10": "C", "11": "E", "12": "A", "13": "A", "14": "D", "15": "A", "16": "E", "17": "D", "18": "B", "19": "C", "20": "D", "21": "E", "22": "D", "23": "B", "24": "D", "25": "D"}}, {"name": "Mariana Soares Barboza Vivas Rocha", "class": "6o", "score": 9, "total": 25, "percentage": 36.0, "missed_tags": ["Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "Unidades de Medida", "\u00c1lgebra"], "answers": {"1": "C", "2": "D", "3": "D", "5": "B", "6": "D", "7": "B", "8": "D", "9": "D", "10": "B", "11": "D", "13": "D", "14": "D", "15": "B", "19": "D", "20": "E", "21": "D", "22": "D", "23": "B", "24": "C", "25": "D"}}, {"name": "Miguel Augusto Stuart Fonseca", "class": "6o", "score": 12, "total": 25, "percentage": 48.0, "missed_tags": ["Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pontos", "Porcentagem", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "C", "2": "C", "3": "E", "4": "D", "5": "B", "6": "C", "7": "A", "8": "B", "9": "D", "10": "D", "11": "A", "12": "E", "13": "D", "14": "B", "15": "B", "16": "C", "17": "C", "18": "B", "19": "C", "20": "D", "21": "A", "22": "D", "23": "B", "24": "D", "25": "D"}}, {"name": "Pedro Bueno Sanches", "class": "6o", "score": 15, "total": 25, "percentage": 60.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "C", "2": "D", "3": "E", "4": "B", "5": "D", "6": "C", "7": "C", "8": "A", "9": "D", "10": "C", "11": "A", "12": "E", "13": "D", "14": "D", "15": "D", "16": "C", "17": "B", "18": "B", "19": "C", "20": "E", "21": "A", "22": "D", "23": "B", "24": "C", "25": "D"}}, {"name": "Pedro Lima garcia Neves", "class": "6o", "score": 12, "total": 25, "percentage": 48.0, "missed_tags": ["Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "B", "2": "C", "3": "B", "4": "A", "5": "A", "6": "A", "7": "A", "8": "B", "9": "D", "10": "B", "11": "E", "12": "E", "13": "C", "14": "D", "15": "B", "16": "D", "17": "B", "18": "B", "19": "D", "20": "E", "21": "A", "22": "D", "23": "B", "24": "C"}}, {"name": "Rafael Calazans Liboredo Peres Starling", "class": "6o", "score": 10, "total": 25, "percentage": 40.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Subtra\u00e7\u00e3o", "Unidades de Medida", "\u00c1lgebra"], "answers": {"1": "C", "2": "B", "3": "E", "4": "B", "5": "D", "6": "D", "7": "B", "8": "D", "9": "D", "10": "B", "11": "A", "12": "A", "13": "E", "14": "A", "15": "E", "16": "C", "17": "B", "18": "A", "19": "D", "20": "E", "21": "A", "22": "D", "23": "B", "24": "B", "25": "D"}}, {"name": "Sofia Junqueira Rodrigues Almeida", "class": "6o", "score": 1, "total": 25, "percentage": 4.0, "missed_tags": ["Adi\u00e7\u00e3o", "Classifica\u00e7\u00e3o de \u00c2ngulos", "Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Per\u00edmetro", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "Unidades de Medida", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "A", "2": "E", "3": "E", "4": "E", "5": "E", "6": "A", "7": "A", "8": "E", "9": "E", "10": "B", "11": "B", "12": "B", "13": "D", "14": "E", "15": "C", "16": "D", "17": "D", "18": "D", "19": "D", "20": "D", "21": "B", "22": "C", "23": "C", "24": "A", "25": "D"}}, {"name": "Tain\u00e1 Medeiros Lopes", "class": "6o", "score": 10, "total": 25, "percentage": 40.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Equival\u00eancia", "Fra\u00e7\u00f5es", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "A", "2": "B", "3": "E", "4": "E", "5": "E", "6": "A", "7": "E", "8": "E", "9": "D", "10": "A", "11": "A", "12": "E", "13": "D", "14": "D", "15": "A", "16": "A", "17": "D", "18": "C", "19": "C", "20": "C", "21": "A", "22": "D", "23": "B", "24": "D", "25": "D"}}, {"name": "Ana Clara Evaristo Barbosa", "class": "7oA", "score": 6, "total": 25, "percentage": 24.0, "missed_tags": ["Adi\u00e7\u00e3o", "Classifica\u00e7\u00e3o de Retas", "Classifica\u00e7\u00e3o de \u00c2ngulos", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pontos", "Porcentagem", "Pot\u00eancia", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "A", "2": "D", "3": "E", "4": "A", "5": "C", "6": "A", "7": "A", "8": "B", "9": "D", "10": "B", "11": "D", "12": "E", "13": "B", "14": "C", "15": "A", "16": "C", "17": "B", "18": "C", "19": "B", "20": "C", "21": "E", "22": "C", "23": "A", "24": "B", "25": "A"}}, {"name": "Ana Liz Drumond Ribeiro", "class": "7oA", "score": 20, "total": 25, "percentage": 80.0, "missed_tags": ["Divis\u00e3o", "Fra\u00e7\u00f5es", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pontos", "Porcentagem", "Subtra\u00e7\u00e3o", "\u00c1lgebra"], "answers": {"1": "A", "2": "D", "3": "E", "4": "A", "5": "E", "6": "C", "7": "B", "8": "C", "9": "D", "10": "C", "11": "E", "12": "E", "13": "A", "14": "D", "15": "B", "16": "C", "17": "A", "18": "D", "19": "C", "20": "E", "21": "C", "22": "B", "23": "B", "24": "B", "25": "C"}}, {"name": "Bianca Santiago Reis Souza", "class": "7oA", "score": 21, "total": 25, "percentage": 84.0, "missed_tags": ["Divis\u00e3o", "Fra\u00e7\u00f5es", "MDC", "MMC", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pontos", "\u00c1lgebra"], "answers": {"1": "D", "2": "D", "3": "B", "4": "C", "5": "E", "6": "C", "7": "B", "8": "C", "9": "D", "10": "C", "11": "A", "12": "E", "13": "E", "14": "D", "15": "B", "16": "C", "17": "A", "18": "D", "19": "B", "20": "E", "21": "C", "22": "B", "23": "B", "24": "B", "25": "C"}}, {"name": "Cec\u00edlia Assun\u00e7\u00e3o de Oliveira", "class": "7oA", "score": 12, "total": 25, "percentage": 48.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra"], "answers": {"1": "D", "2": "D", "3": "E", "4": "E", "5": "E", "6": "D", "7": "B", "8": "C", "9": "D", "10": "C", "11": "C", "12": "E", "13": "E", "14": "B", "15": "B", "16": "A", "17": "A", "18": "D", "19": "B", "20": "B", "21": "C", "22": "A", "23": "B", "24": "D", "25": "E"}}, {"name": "Clara Fernandes Gutstein Nunes", "class": "7oA", "score": 9, "total": 25, "percentage": 36.0, "missed_tags": ["Adi\u00e7\u00e3o", "Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Pot\u00eancia", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "A", "2": "B", "3": "E", "4": "A", "5": "E", "6": "B", "7": "A", "8": "A", "9": "D", "10": "D", "11": "A", "12": "E", "13": "A", "14": "D", "15": "D", "16": "C", "17": "C", "18": "A", "19": "A", "20": "E", "21": "C", "22": "C", "23": "B", "24": "D", "25": "A"}}, {"name": "Clara Maria Santos de Oliveira", "class": "7oA", "score": 14, "total": 25, "percentage": 56.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Subtra\u00e7\u00e3o", "Unidades de Medida", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "D", "2": "D", "3": "D", "4": "A", "5": "E", "6": "E", "7": "C", "8": "C", "9": "D", "10": "A", "11": "C", "12": "A", "13": "A", "14": "D", "15": "B", "16": "C", "17": "A", "18": "D", "19": "E", "20": "E", "21": "C", "22": "B", "23": "B", "24": "C", "25": "A"}}, {"name": "Isabella Cabral Contaifer", "class": "7oA", "score": 6, "total": 25, "percentage": 24.0, "missed_tags": ["Adi\u00e7\u00e3o", "Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Per\u00edmetro", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Pot\u00eancia", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"3": "E", "4": "B", "5": "C", "6": "B", "7": "D", "8": "D", "9": "A", "10": "C", "11": "A", "12": "E", "13": "E", "14": "D", "15": "D", "16": "E", "17": "A", "19": "D", "21": "E", "23": "B"}}, {"name": "Isabelle de Oliveira Vieira", "class": "7oA", "score": 10, "total": 25, "percentage": 40.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Per\u00edmetro", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "A", "2": "A", "3": "E", "4": "A", "5": "C", "7": "A", "8": "C", "9": "E", "10": "C", "12": "E", "13": "E", "14": "D", "15": "B", "16": "A", "17": "A", "18": "D", "20": "E", "22": "C", "23": "B", "25": "A"}}, {"name": "Manuela Gomes Tanure de Matos", "class": "7oA", "score": 11, "total": 25, "percentage": 44.0, "missed_tags": ["Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Pot\u00eancia", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "D", "2": "A", "3": "B", "4": "D", "5": "C", "6": "A", "7": "C", "8": "A", "9": "D", "10": "D", "11": "E", "12": "E", "13": "A", "14": "D", "15": "B", "16": "C", "17": "C", "18": "E", "19": "C", "20": "A", "21": "E", "22": "B", "23": "B", "24": "C", "25": "C"}}, {"name": "Maria Fernanda Soares Valadares", "class": "7oA", "score": 4, "total": 25, "percentage": 16.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Per\u00edmetro", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Pot\u00eancia", "Soma", "Subtra\u00e7\u00e3o", "Unidades de Medida", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "C", "2": "A", "3": "E", "4": "B", "5": "C", "6": "B", "7": "C", "8": "D", "9": "A", "10": "B", "11": "C", "12": "A", "13": "E", "14": "B", "15": "C", "16": "B", "17": "C", "19": "A", "20": "E", "21": "B", "22": "B", "23": "B", "24": "C", "25": "C"}}, {"name": "Mariana Moreira Cabral", "class": "7oA", "score": 10, "total": 25, "percentage": 40.0, "missed_tags": ["Adi\u00e7\u00e3o", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Subtra\u00e7\u00e3o", "Unidades de Medida", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "D", "2": "D", "3": "E", "4": "C", "5": "B", "6": "B", "7": "C", "8": "D", "9": "D", "10": "A", "11": "C", "12": "A", "13": "A", "14": "B", "15": "C", "16": "C", "17": "A", "18": "D", "19": "B", "20": "E", "21": "C", "22": "C", "23": "B", "24": "D", "25": "C"}}, {"name": "Talita Leonel Castro", "class": "7oA", "score": 13, "total": 25, "percentage": 52.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Classifica\u00e7\u00e3o de \u00c2ngulos", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "N\u00fameros Mistos", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Pot\u00eancia", "Subtra\u00e7\u00e3o", "\u00c1lgebra"], "answers": {"1": "A", "2": "C", "3": "E", "4": "A", "5": "D", "6": "D", "7": "B", "8": "C", "9": "D", "10": "C", "11": "A", "12": "E", "13": "D", "14": "D", "15": "B", "16": "C", "17": "C", "18": "E", "19": "D", "20": "E", "21": "C", "22": "D", "23": "C", "24": "C", "25": "B"}}, {"name": "Yasmin Ferreira Souza", "class": "7oA", "score": 10, "total": 25, "percentage": 40.0, "missed_tags": ["Adi\u00e7\u00e3o", "Classifica\u00e7\u00e3o de Retas", "Classifica\u00e7\u00e3o de \u00c2ngulos", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Per\u00edmetro", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "D", "2": "D", "3": "A", "4": "A", "5": "D", "6": "C", "7": "A", "8": "C", "9": "E", "10": "E", "11": "C", "12": "E", "13": "C", "14": "B", "15": "D", "16": "C", "17": "A", "18": "D", "19": "C", "20": "B", "21": "B", "22": "D", "23": "A", "24": "D", "25": "B"}}, {"name": "Angelus Ribeiro do Amaral", "class": "7oV", "score": 20, "total": 25, "percentage": 80.0, "missed_tags": ["Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Pol\u00edgonos", "Porcentagem", "Subtra\u00e7\u00e3o", "\u00c1lgebra"], "answers": {"1": "B", "2": "D", "3": "B", "4": "A", "5": "A", "6": "C", "7": "B", "8": "C", "9": "D", "10": "C", "11": "C", "12": "E", "13": "D", "14": "C", "15": "B", "16": "C", "17": "A", "18": "D", "19": "D", "20": "E", "21": "C", "22": "B", "23": "B", "24": "C", "25": "C"}}, {"name": "Caio Alves Ara\u00fajo de Oliveira", "class": "7oV", "score": 14, "total": 25, "percentage": 56.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Multiplica\u00e7\u00e3o", "N\u00fameros Mistos", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Pot\u00eancia", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "D", "2": "A", "3": "B", "4": "B", "5": "D", "6": "D", "8": "C", "9": "D", "10": "C", "12": "E", "13": "D", "14": "D", "15": "B", "19": "C", "20": "E", "21": "C", "22": "B", "23": "B", "25": "A"}}, {"name": "Davi de Carvalho Ara\u00fajo", "class": "7oV", "score": 13, "total": 25, "percentage": 52.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Per\u00edmetro", "Plano Cartesiano", "Pontos", "Porcentagem", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "A", "2": "D", "3": "B", "4": "A", "5": "E", "6": "A", "7": "A", "8": "C", "9": "C", "10": "A", "11": "A", "12": "E", "13": "E", "14": "A", "15": "B", "16": "A", "17": "A", "18": "D", "19": "D", "20": "E", "21": "C", "22": "E", "23": "B", "24": "B", "25": "B"}}, {"name": "Felipe Ferriera Requeijo", "class": "7oV", "score": 12, "total": 25, "percentage": 48.0, "missed_tags": ["Classifica\u00e7\u00e3o de \u00c2ngulos", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Per\u00edmetro", "Plano Cartesiano", "Pontos", "Porcentagem", "Pot\u00eancia", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "C", "2": "D", "3": "B", "4": "A", "5": "E", "6": "A", "7": "A", "8": "E", "9": "B", "10": "C", "11": "A", "12": "E", "13": "A", "14": "D", "15": "B", "16": "C", "17": "C", "18": "A", "19": "C", "20": "B", "21": "E", "22": "D", "23": "A", "24": "B", "25": "C"}}, {"name": "Jo\u00e3o Ara\u00fajo de Oliveira", "class": "7oV", "score": 16, "total": 25, "percentage": 64.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Matem\u00e1tica Financeira", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Pot\u00eancia", "Subtra\u00e7\u00e3o", "\u00c1lgebra"], "answers": {"1": "B", "2": "D", "3": "A", "4": "A", "5": "D", "6": "C", "7": "B", "8": "C", "9": "D", "10": "B", "11": "A", "12": "E", "13": "D", "14": "D", "15": "B", "16": "C", "17": "C", "18": "D", "19": "C", "20": "E", "21": "A", "22": "C", "23": "B", "24": "C", "25": "E"}}, {"name": "Luca Alves Ara\u00fajo de Oliveira", "class": "7oV", "score": 20, "total": 25, "percentage": 80.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Classifica\u00e7\u00e3o de \u00c2ngulos", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pontos", "Soma", "Subtra\u00e7\u00e3o", "\u00c1lgebra"], "answers": {"1": "D", "2": "D", "3": "B", "4": "A", "5": "E", "6": "C", "7": "B", "8": "C", "9": "D", "10": "C", "11": "A", "12": "E", "13": "A", "14": "D", "15": "B", "16": "A", "17": "A", "18": "D", "19": "C", "20": "E", "21": "C", "22": "B", "23": "C", "24": "B", "25": "E"}}, {"name": "Nicolas Emanuel Perez Diaz", "class": "7oV", "score": 16, "total": 25, "percentage": 64.0, "missed_tags": ["Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Pot\u00eancia", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "A", "2": "D", "3": "B", "4": "C", "5": "D", "6": "C", "7": "A", "8": "E", "9": "D", "10": "C", "11": "A", "12": "E", "13": "E", "14": "A", "15": "B", "16": "C", "17": "A", "18": "E", "19": "C", "20": "E", "21": "C", "22": "B", "23": "B", "24": "C", "25": "C"}}, {"name": "Rafael Claro Vieira", "class": "7oV", "score": 16, "total": 25, "percentage": 64.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "Multiplica\u00e7\u00e3o", "Porcentagem", "Pot\u00eancia", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "A", "2": "D", "3": "B", "4": "A", "5": "A", "6": "C", "7": "D", "8": "C", "9": "D", "10": "C", "12": "E", "13": "C", "14": "B", "15": "B", "16": "C", "17": "A", "18": "E", "19": "E", "20": "C", "21": "C", "22": "B", "23": "B", "24": "B", "25": "A"}}, {"name": "Vitor Botelho Silva", "class": "7oV", "score": 14, "total": 25, "percentage": 56.0, "missed_tags": ["Classifica\u00e7\u00e3o de Retas", "Divis\u00e3o", "Fra\u00e7\u00f5es", "Geometria", "Interpreta\u00e7\u00e3o", "L\u00f3gica", "MDC", "MMC", "Matem\u00e1tica Financeira", "Multiplica\u00e7\u00e3o", "Plano Cartesiano", "Pol\u00edgonos", "Pontos", "Porcentagem", "Pot\u00eancia", "Subtra\u00e7\u00e3o", "\u00c1lgebra", "\u00c1rea"], "answers": {"1": "D", "2": "D", "3": "B", "4": "C", "5": "E", "6": "C", "7": "A", "8": "C", "9": "D", "10": "B", "11": "A", "12": "E", "13": "A", "14": "A", "15": "B", "16": "C", "17": "C", "18": "D", "19": "C", "21": "C", "22": "A", "23": "B", "24": "D", "25": "D"}}];
         const chartData = {"6o": {"scores": [20, 7, 13, 13, 11, 8, 14, 21, 11, 9, 9, 12, 15, 12, 10, 1, 10], "avg": 11.529411764705882, "question_accuracy": {"1": 17.647058823529413, "2": 29.411764705882355, "3": 17.647058823529413, "4": 29.411764705882355, "5": 5.88235294117647, "6": 17.647058823529413, "7": 35.294117647058826, "8": 11.76470588235294, "9": 70.58823529411765, "10": 41.17647058823529, "11": 35.294117647058826, "12": 70.58823529411765, "13": 17.647058823529413, "14": 58.82352941176471, "15": 47.05882352941176, "16": 58.82352941176471, "17": 29.411764705882355, "18": 23.52941176470588, "19": 47.05882352941176, "20": 70.58823529411765, "21": 82.35294117647058, "22": 94.11764705882352, "23": 94.11764705882352, "24": 52.94117647058824, "25": 94.11764705882352}, "tag_accuracy": {"Fra\u00e7\u00f5es": 27.73109243697479, "L\u00f3gica": 43.13725490196079, "N\u00fameros Mistos": 29.411764705882355, "Interpreta\u00e7\u00e3o": 32.94117647058823, "MMC": 29.411764705882355, "MDC": 29.411764705882355, "Plano Cartesiano": 11.76470588235294, "Pontos": 11.76470588235294, "\u00c1rea": 35.294117647058826, "Matem\u00e1tica Financeira": 11.76470588235294, "Multiplica\u00e7\u00e3o": 42.35294117647059, "Subtra\u00e7\u00e3o": 47.05882352941176, "Geometria": 72.54901960784314, "Per\u00edmetro": 70.58823529411765, "Soma": 64.70588235294117, "Porcentagem": 38.23529411764706, "Unidades de Medida": 70.58823529411765, "Divis\u00e3o": 47.05882352941176, "\u00c1lgebra": 38.23529411764706, "Adi\u00e7\u00e3o": 47.05882352941176, "Equival\u00eancia": 23.52941176470588, "Classifica\u00e7\u00e3o de \u00c2ngulos": 94.11764705882352, "Pol\u00edgonos": 73.52941176470588}}, "7oA": {"scores": [6, 20, 21, 12, 9, 14, 6, 10, 11, 4, 10, 13, 10], "avg": 11.23076923076923, "question_accuracy": {"1": 46.15384615384615, "2": 53.84615384615385, "3": 15.384615384615385, "4": 53.84615384615385, "5": 0.0, "6": 23.076923076923077, "7": 30.76923076923077, "8": 53.84615384615385, "9": 69.23076923076923, "10": 46.15384615384615, "11": 30.76923076923077, "12": 76.92307692307693, "13": 7.6923076923076925, "14": 61.53846153846154, "15": 53.84615384615385, "16": 69.23076923076923, "17": 61.53846153846154, "18": 53.84615384615385, "19": 23.076923076923077, "20": 61.53846153846154, "21": 53.84615384615385, "22": 38.46153846153847, "23": 76.92307692307693, "24": 23.076923076923077, "25": 38.46153846153847}, "tag_accuracy": {"Fra\u00e7\u00f5es": 39.42307692307692, "L\u00f3gica": 43.58974358974359, "N\u00fameros Mistos": 53.84615384615385, "Interpreta\u00e7\u00e3o": 41.53846153846154, "MMC": 53.84615384615385, "MDC": 53.84615384615385, "Plano Cartesiano": 11.538461538461538, "Pontos": 11.538461538461538, "\u00c1rea": 30.76923076923077, "Matem\u00e1tica Financeira": 48.717948717948715, "Multiplica\u00e7\u00e3o": 43.58974358974359, "Subtra\u00e7\u00e3o": 53.84615384615385, "Geometria": 43.58974358974359, "Per\u00edmetro": 69.23076923076923, "Soma": 69.23076923076923, "Porcentagem": 42.30769230769231, "Unidades de Medida": 76.92307692307693, "Divis\u00e3o": 44.61538461538462, "\u00c1lgebra": 43.07692307692308, "Adi\u00e7\u00e3o": 53.84615384615385, "Pot\u00eancia": 57.692307692307686, "Classifica\u00e7\u00e3o de \u00c2ngulos": 76.92307692307693, "Pol\u00edgonos": 23.076923076923077, "Classifica\u00e7\u00e3o de Retas": 38.46153846153847}}, "7oV": {"scores": [20, 14, 13, 12, 16, 20, 16, 16, 14], "avg": 15.666666666666666, "question_accuracy": {"1": 33.33333333333333, "2": 88.88888888888889, "3": 88.88888888888889, "4": 66.66666666666666, "5": 22.22222222222222, "6": 66.66666666666666, "7": 33.33333333333333, "8": 77.77777777777779, "9": 77.77777777777779, "10": 66.66666666666666, "11": 66.66666666666666, "12": 100.0, "13": 33.33333333333333, "14": 44.44444444444444, "15": 100.0, "16": 66.66666666666666, "17": 55.55555555555556, "18": 55.55555555555556, "19": 66.66666666666666, "20": 66.66666666666666, "21": 77.77777777777779, "22": 55.55555555555556, "23": 77.77777777777779, "24": 44.44444444444444, "25": 33.33333333333333}, "tag_accuracy": {"Fra\u00e7\u00f5es": 68.05555555555556, "L\u00f3gica": 68.51851851851852, "N\u00fameros Mistos": 88.88888888888889, "Interpreta\u00e7\u00e3o": 68.88888888888889, "MMC": 66.66666666666666, "MDC": 66.66666666666666, "Plano Cartesiano": 44.44444444444444, "Pontos": 44.44444444444444, "\u00c1rea": 33.33333333333333, "Matem\u00e1tica Financeira": 70.37037037037037, "Multiplica\u00e7\u00e3o": 59.25925925925925, "Subtra\u00e7\u00e3o": 66.66666666666666, "Geometria": 51.85185185185185, "Per\u00edmetro": 77.77777777777779, "Soma": 72.22222222222221, "Porcentagem": 66.66666666666666, "Unidades de Medida": 100.0, "Divis\u00e3o": 55.55555555555556, "\u00c1lgebra": 55.55555555555556, "Adi\u00e7\u00e3o": 100.0, "Pot\u00eancia": 55.55555555555556, "Classifica\u00e7\u00e3o de \u00c2ngulos": 77.77777777777779, "Pol\u00edgonos": 44.44444444444444, "Classifica\u00e7\u00e3o de Retas": 33.33333333333333}}};
         const classData = {"6o": {"total_questions": 25, "question_stats": {"1": {"correct": 3, "incorrect": 14}, "2": {"correct": 5, "incorrect": 12}, "3": {"correct": 3, "incorrect": 14}, "4": {"correct": 5, "incorrect": 12}, "5": {"correct": 1, "incorrect": 16}, "6": {"correct": 3, "incorrect": 14}, "7": {"correct": 6, "incorrect": 11}, "8": {"correct": 2, "incorrect": 15}, "9": {"correct": 12, "incorrect": 5}, "10": {"correct": 7, "incorrect": 10}, "11": {"correct": 6, "incorrect": 11}, "12": {"correct": 12, "incorrect": 5}, "13": {"correct": 3, "incorrect": 14}, "14": {"correct": 10, "incorrect": 7}, "15": {"correct": 8, "incorrect": 9}, "16": {"correct": 10, "incorrect": 7}, "17": {"correct": 5, "incorrect": 12}, "18": {"correct": 4, "incorrect": 13}, "19": {"correct": 8, "incorrect": 9}, "20": {"correct": 12, "incorrect": 5}, "21": {"correct": 14, "incorrect": 3}, "22": {"correct": 16, "incorrect": 1}, "23": {"correct": 16, "incorrect": 1}, "24": {"correct": 9, "incorrect": 8}, "25": {"correct": 16, "incorrect": 1}}, "tag_stats": {"Fra\u00e7\u00f5es": {"correct": 33, "incorrect": 86}, "L\u00f3gica": {"correct": 44, "incorrect": 58}, "N\u00fameros Mistos": {"correct": 5, "incorrect": 12}, "Interpreta\u00e7\u00e3o": {"correct": 28, "incorrect": 57}, "MMC": {"correct": 5, "incorrect": 12}, "MDC": {"correct": 5, "incorrect": 12}, "Plano Cartesiano": {"correct": 4, "incorrect": 30}, "Pontos": {"correct": 4, "incorrect": 30}, "\u00c1rea": {"correct": 6, "incorrect": 11}, "Matem\u00e1tica Financeira": {"correct": 2, "incorrect": 15}, "Multiplica\u00e7\u00e3o": {"correct": 36, "incorrect": 49}, "Subtra\u00e7\u00e3o": {"correct": 32, "incorrect": 36}, "Geometria": {"correct": 37, "incorrect": 14}, "Per\u00edmetro": {"correct": 12, "incorrect": 5}, "Soma": {"correct": 22, "incorrect": 12}, "Porcentagem": {"correct": 13, "incorrect": 21}, "Unidades de Medida": {"correct": 12, "incorrect": 5}, "Divis\u00e3o": {"correct": 48, "incorrect": 54}, "\u00c1lgebra": {"correct": 26, "incorrect": 42}, "Adi\u00e7\u00e3o": {"correct": 8, "incorrect": 9}, "Equival\u00eancia": {"correct": 4, "incorrect": 13}, "Classifica\u00e7\u00e3o de \u00c2ngulos": {"correct": 16, "incorrect": 1}, "Pol\u00edgonos": {"correct": 25, "incorrect": 9}}}, "7oA": {"total_questions": 25, "question_stats": {"1": {"correct": 6, "incorrect": 7}, "2": {"correct": 7, "incorrect": 6}, "3": {"correct": 2, "incorrect": 11}, "4": {"correct": 7, "incorrect": 6}, "5": {"correct": 0, "incorrect": 13}, "6": {"correct": 3, "incorrect": 10}, "7": {"correct": 4, "incorrect": 9}, "8": {"correct": 7, "incorrect": 6}, "9": {"correct": 9, "incorrect": 4}, "10": {"correct": 6, "incorrect": 7}, "11": {"correct": 4, "incorrect": 9}, "12": {"correct": 10, "incorrect": 3}, "13": {"correct": 1, "incorrect": 12}, "14": {"correct": 8, "incorrect": 5}, "15": {"correct": 7, "incorrect": 6}, "16": {"correct": 9, "incorrect": 4}, "17": {"correct": 8, "incorrect": 5}, "18": {"correct": 7, "incorrect": 6}, "19": {"correct": 3, "incorrect": 10}, "20": {"correct": 8, "incorrect": 5}, "21": {"correct": 7, "incorrect": 6}, "22": {"correct": 5, "incorrect": 8}, "23": {"correct": 10, "incorrect": 3}, "24": {"correct": 3, "incorrect": 10}, "25": {"correct": 5, "incorrect": 8}}, "tag_stats": {"Fra\u00e7\u00f5es": {"correct": 41, "incorrect": 63}, "L\u00f3gica": {"correct": 34, "incorrect": 44}, "N\u00fameros Mistos": {"correct": 7, "incorrect": 6}, "Interpreta\u00e7\u00e3o": {"correct": 27, "incorrect": 38}, "MMC": {"correct": 7, "incorrect": 6}, "MDC": {"correct": 7, "incorrect": 6}, "Plano Cartesiano": {"correct": 3, "incorrect": 23}, "Pontos": {"correct": 3, "incorrect": 23}, "\u00c1rea": {"correct": 4, "incorrect": 9}, "Matem\u00e1tica Financeira": {"correct": 19, "incorrect": 20}, "Multiplica\u00e7\u00e3o": {"correct": 17, "incorrect": 22}, "Subtra\u00e7\u00e3o": {"correct": 28, "incorrect": 24}, "Geometria": {"correct": 17, "incorrect": 22}, "Per\u00edmetro": {"correct": 9, "incorrect": 4}, "Soma": {"correct": 18, "incorrect": 8}, "Porcentagem": {"correct": 22, "incorrect": 30}, "Unidades de Medida": {"correct": 10, "incorrect": 3}, "Divis\u00e3o": {"correct": 29, "incorrect": 36}, "\u00c1lgebra": {"correct": 28, "incorrect": 37}, "Adi\u00e7\u00e3o": {"correct": 7, "incorrect": 6}, "Pot\u00eancia": {"correct": 15, "incorrect": 11}, "Classifica\u00e7\u00e3o de \u00c2ngulos": {"correct": 10, "incorrect": 3}, "Pol\u00edgonos": {"correct": 3, "incorrect": 10}, "Classifica\u00e7\u00e3o de Retas": {"correct": 5, "incorrect": 8}}}, "7oV": {"total_questions": 25, "question_stats": {"1": {"correct": 3, "incorrect": 6}, "2": {"correct": 8, "incorrect": 1}, "3": {"correct": 8, "incorrect": 1}, "4": {"correct": 6, "incorrect": 3}, "5": {"correct": 2, "incorrect": 7}, "6": {"correct": 6, "incorrect": 3}, "7": {"correct": 3, "incorrect": 6}, "8": {"correct": 7, "incorrect": 2}, "9": {"correct": 7, "incorrect": 2}, "10": {"correct": 6, "incorrect": 3}, "11": {"correct": 6, "incorrect": 3}, "12": {"correct": 9, "incorrect": 0}, "13": {"correct": 3, "incorrect": 6}, "14": {"correct": 4, "incorrect": 5}, "15": {"correct": 9, "incorrect": 0}, "16": {"correct": 6, "incorrect": 3}, "17": {"correct": 5, "incorrect": 4}, "18": {"correct": 5, "incorrect": 4}, "19": {"correct": 6, "incorrect": 3}, "20": {"correct": 6, "incorrect": 3}, "21": {"correct": 7, "incorrect": 2}, "22": {"correct": 5, "incorrect": 4}, "23": {"correct": 7, "incorrect": 2}, "24": {"correct": 4, "incorrect": 5}, "25": {"correct": 3, "incorrect": 6}}, "tag_stats": {"Fra\u00e7\u00f5es": {"correct": 49, "incorrect": 23}, "L\u00f3gica": {"correct": 37, "incorrect": 17}, "N\u00fameros Mistos": {"correct": 8, "incorrect": 1}, "Interpreta\u00e7\u00e3o": {"correct": 31, "incorrect": 14}, "MMC": {"correct": 6, "incorrect": 3}, "MDC": {"correct": 6, "incorrect": 3}, "Plano Cartesiano": {"correct": 8, "incorrect": 10}, "Pontos": {"correct": 8, "incorrect": 10}, "\u00c1rea": {"correct": 3, "incorrect": 6}, "Matem\u00e1tica Financeira": {"correct": 19, "incorrect": 8}, "Multiplica\u00e7\u00e3o": {"correct": 16, "incorrect": 11}, "Subtra\u00e7\u00e3o": {"correct": 24, "incorrect": 12}, "Geometria": {"correct": 14, "incorrect": 13}, "Per\u00edmetro": {"correct": 7, "incorrect": 2}, "Soma": {"correct": 13, "incorrect": 5}, "Porcentagem": {"correct": 24, "incorrect": 12}, "Unidades de Medida": {"correct": 9, "incorrect": 0}, "Divis\u00e3o": {"correct": 25, "incorrect": 20}, "\u00c1lgebra": {"correct": 25, "incorrect": 20}, "Adi\u00e7\u00e3o": {"correct": 9, "incorrect": 0}, "Pot\u00eancia": {"correct": 10, "incorrect": 8}, "Classifica\u00e7\u00e3o de \u00c2ngulos": {"correct": 7, "incorrect": 2}, "Pol\u00edgonos": {"correct": 4, "incorrect": 5}, "Classifica\u00e7\u00e3o de Retas": {"correct": 3, "incorrect": 6}}}};
+        const answerKeyData = {"6o": {}, "7oA": {}, "7oV": {}};
+        const studentAnswersData = {"Andr\u00e9 Drumond Biondi": {"class": "6o", "answers": {"1": "D", "2": "D", "3": "B", "4": "A", "5": "E", "6": "A", "7": "B", "8": "D", "9": "D", "10": "C", "11": "A", "12": "E", "13": "A", "14": "D", "15": "B", "16": "C", "17": "C", "18": "E", "19": "C", "20": "E", "21": "A", "22": "D", "23": "B", "24": "C", "25": "D"}}, "Clara Maria Gomes Assun\u00e7\u00e3o": {"class": "6o", "answers": {"1": "B", "2": "C", "3": "E", "4": "E", "5": "E", "6": "E", "7": "C", "8": "C", "9": "E", "10": "E", "11": "B", "12": "D", "13": "B", "14": "C", "15": "D", "16": "C", "17": "A", "18": "B", "19": "B", "20": "C", "21": "A", "22": "D", "23": "B", "24": "D", "25": "D"}}, "Francisco Rocha de Carvalho e Mello": {"class": "6o", "answers": {"1": "A", "2": "B", "3": "E", "4": "C", "5": "E", "6": "C", "7": "A", "8": "E", "9": "B", "10": "B", "11": "E", "12": "E", "13": "D", "14": "D", "15": "B", "16": "C", "17": "D", "18": "E", "19": "C", "20": "E", "21": "A", "22": "D", "23": "B", "24": "D", "25": "D"}}, "Giovanna Rafaela Francisco Amaral": {"class": "6o", "answers": {"1": "A", "2": "E", "3": "E", "4": "A", "5": "E", "6": "D", "7": "C", "8": "A", "9": "D", "10": "C", "11": "D", "12": "E", "13": "B", "14": "A", "15": "C", "16": "C", "17": "D", "18": "E", "19": "C", "20": "E", "21": "A", "22": "D", "23": "B", "24": "D", "25": "D"}}, "Helena Pinheiro Marra": {"class": "6o", "answers": {"1": "A", "2": "B", "3": "E", "4": "C", "5": "E", "6": "D", "7": "E", "8": "D", "9": "D", "10": "B", "11": "C", "12": "E", "13": "B", "14": "D", "15": "B", "16": "E", "17": "B", "18": "B", "19": "A", "20": "E", "21": "A", "22": "D", "23": "B", "24": "D", "25": "D"}}, "Jo\u00e3o Vitor Belote Amorim Grecov": {"class": "6o", "answers": {"1": "E", "2": "C", "3": "A", "4": "B", "5": "E", "6": "D", "7": "A", "8": "A", "9": "B", "10": "D", "11": "E", "12": "E", "13": "B", "14": "D", "15": "A", "16": "C", "17": "D", "18": "B", "19": "E", "20": "E", "21": "A", "22": "D", "23": "B", "24": "E", "25": "D"}}, "Lucas Soares de Assis": {"class": "6o", "answers": {"1": "D", "2": "D", "3": "D", "4": "A", "5": "E", "6": "D", "7": "B", "8": "B", "9": "E", "10": "C", "11": "E", "12": "E", "13": "D", "14": "E", "15": "B", "16": "C", "17": "E", "18": "E", "19": "D", "20": "E", "21": "A", "22": "D", "23": "B", "24": "C", "25": "D"}}, "Manuela Guimar\u00e3es do Amaral Dantas": {"class": "6o", "answers": {"1": "D", "2": "D", "3": "B", "4": "A", "5": "C", "6": "D", "7": "B", "8": "C", "9": "D", "10": "C", "11": "A", "12": "E", "13": "D", "14": "D", "15": "B", "16": "C", "17": "B", "18": "B", "19": "C", "20": "E", "21": "A", "22": "D", "23": "B", "24": "D", "25": "D"}}, "Maria Fernanda Coutinho Carneiro Braz": {"class": "6o", "answers": {"1": "A", "2": "E", "3": "C", "4": "E", "5": "E", "6": "A", "7": "B", "8": "E", "9": "D", "10": "C", "11": "D", "12": "E", "13": "A", "14": "A", "15": "C", "16": "E", "17": "A", "18": "B", "19": "D", "20": "E", "21": "A", "22": "D", "23": "B", "24": "D", "25": "D"}}, "Maria Luiza Esp\u00edrito Santo Silva": {"class": "6o", "answers": {"1": "A", "2": "B", "3": "E", "4": "C", "5": "E", "6": "B", "7": "A", "8": "B", "9": "D", "10": "C", "11": "E", "12": "A", "13": "A", "14": "D", "15": "A", "16": "E", "17": "D", "18": "B", "19": "C", "20": "D", "21": "E", "22": "D", "23": "B", "24": "D", "25": "D"}}, "Mariana Soares Barboza Vivas Rocha": {"class": "6o", "answers": {"1": "C", "2": "D", "3": "D", "5": "B", "6": "D", "7": "B", "8": "D", "9": "D", "10": "B", "11": "D", "13": "D", "14": "D", "15": "B", "19": "D", "20": "E", "21": "D", "22": "D", "23": "B", "24": "C", "25": "D"}}, "Miguel Augusto Stuart Fonseca": {"class": "6o", "answers": {"1": "C", "2": "C", "3": "E", "4": "D", "5": "B", "6": "C", "7": "A", "8": "B", "9": "D", "10": "D", "11": "A", "12": "E", "13": "D", "14": "B", "15": "B", "16": "C", "17": "C", "18": "B", "19": "C", "20": "D", "21": "A", "22": "D", "23": "B", "24": "D", "25": "D"}}, "Pedro Bueno Sanches": {"class": "6o", "answers": {"1": "C", "2": "D", "3": "E", "4": "B", "5": "D", "6": "C", "7": "C", "8": "A", "9": "D", "10": "C", "11": "A", "12": "E", "13": "D", "14": "D", "15": "D", "16": "C", "17": "B", "18": "B", "19": "C", "20": "E", "21": "A", "22": "D", "23": "B", "24": "C", "25": "D"}}, "Pedro Lima garcia Neves": {"class": "6o", "answers": {"1": "B", "2": "C", "3": "B", "4": "A", "5": "A", "6": "A", "7": "A", "8": "B", "9": "D", "10": "B", "11": "E", "12": "E", "13": "C", "14": "D", "15": "B", "16": "D", "17": "B", "18": "B", "19": "D", "20": "E", "21": "A", "22": "D", "23": "B", "24": "C"}}, "Rafael Calazans Liboredo Peres Starling": {"class": "6o", "answers": {"1": "C", "2": "B", "3": "E", "4": "B", "5": "D", "6": "D", "7": "B", "8": "D", "9": "D", "10": "B", "11": "A", "12": "A", "13": "E", "14": "A", "15": "E", "16": "C", "17": "B", "18": "A", "19": "D", "20": "E", "21": "A", "22": "D", "23": "B", "24": "B", "25": "D"}}, "Sofia Junqueira Rodrigues Almeida": {"class": "6o", "answers": {"1": "A", "2": "E", "3": "E", "4": "E", "5": "E", "6": "A", "7": "A", "8": "E", "9": "E", "10": "B", "11": "B", "12": "B", "13": "D", "14": "E", "15": "C", "16": "D", "17": "D", "18": "D", "19": "D", "20": "D", "21": "B", "22": "C", "23": "C", "24": "A", "25": "D"}}, "Tain\u00e1 Medeiros Lopes": {"class": "6o", "answers": {"1": "A", "2": "B", "3": "E", "4": "E", "5": "E", "6": "A", "7": "E", "8": "E", "9": "D", "10": "A", "11": "A", "12": "E", "13": "D", "14": "D", "15": "A", "16": "A", "17": "D", "18": "C", "19": "C", "20": "C", "21": "A", "22": "D", "23": "B", "24": "D", "25": "D"}}, "Ana Clara Evaristo Barbosa": {"class": "7oA", "answers": {"1": "A", "2": "D", "3": "E", "4": "A", "5": "C", "6": "A", "7": "A", "8": "B", "9": "D", "10": "B", "11": "D", "12": "E", "13": "B", "14": "C", "15": "A", "16": "C", "17": "B", "18": "C", "19": "B", "20": "C", "21": "E", "22": "C", "23": "A", "24": "B", "25": "A"}}, "Ana Liz Drumond Ribeiro": {"class": "7oA", "answers": {"1": "A", "2": "D", "3": "E", "4": "A", "5": "E", "6": "C", "7": "B", "8": "C", "9": "D", "10": "C", "11": "E", "12": "E", "13": "A", "14": "D", "15": "B", "16": "C", "17": "A", "18": "D", "19": "C", "20": "E", "21": "C", "22": "B", "23": "B", "24": "B", "25": "C"}}, "Bianca Santiago Reis Souza": {"class": "7oA", "answers": {"1": "D", "2": "D", "3": "B", "4": "C", "5": "E", "6": "C", "7": "B", "8": "C", "9": "D", "10": "C", "11": "A", "12": "E", "13": "E", "14": "D", "15": "B", "16": "C", "17": "A", "18": "D", "19": "B", "20": "E", "21": "C", "22": "B", "23": "B", "24": "B", "25": "C"}}, "Cec\u00edlia Assun\u00e7\u00e3o de Oliveira": {"class": "7oA", "answers": {"1": "D", "2": "D", "3": "E", "4": "E", "5": "E", "6": "D", "7": "B", "8": "C", "9": "D", "10": "C", "11": "C", "12": "E", "13": "E", "14": "B", "15": "B", "16": "A", "17": "A", "18": "D", "19": "B", "20": "B", "21": "C", "22": "A", "23": "B", "24": "D", "25": "E"}}, "Clara Fernandes Gutstein Nunes": {"class": "7oA", "answers": {"1": "A", "2": "B", "3": "E", "4": "A", "5": "E", "6": "B", "7": "A", "8": "A", "9": "D", "10": "D", "11": "A", "12": "E", "13": "A", "14": "D", "15": "D", "16": "C", "17": "C", "18": "A", "19": "A", "20": "E", "21": "C", "22": "C", "23": "B", "24": "D", "25": "A"}}, "Clara Maria Santos de Oliveira": {"class": "7oA", "answers": {"1": "D", "2": "D", "3": "D", "4": "A", "5": "E", "6": "E", "7": "C", "8": "C", "9": "D", "10": "A", "11": "C", "12": "A", "13": "A", "14": "D", "15": "B", "16": "C", "17": "A", "18": "D", "19": "E", "20": "E", "21": "C", "22": "B", "23": "B", "24": "C", "25": "A"}}, "Isabella Cabral Contaifer": {"class": "7oA", "answers": {"3": "E", "4": "B", "5": "C", "6": "B", "7": "D", "8": "D", "9": "A", "10": "C", "11": "A", "12": "E", "13": "E", "14": "D", "15": "D", "16": "E", "17": "A", "19": "D", "21": "E", "23": "B"}}, "Isabelle de Oliveira Vieira": {"class": "7oA", "answers": {"1": "A", "2": "A", "3": "E", "4": "A", "5": "C", "7": "A", "8": "C", "9": "E", "10": "C", "12": "E", "13": "E", "14": "D", "15": "B", "16": "A", "17": "A", "18": "D", "20": "E", "22": "C", "23": "B", "25": "A"}}, "Manuela Gomes Tanure de Matos": {"class": "7oA", "answers": {"1": "D", "2": "A", "3": "B", "4": "D", "5": "C", "6": "A", "7": "C", "8": "A", "9": "D", "10": "D", "11": "E", "12": "E", "13": "A", "14": "D", "15": "B", "16": "C", "17": "C", "18": "E", "19": "C", "20": "A", "21": "E", "22": "B", "23": "B", "24": "C", "25": "C"}}, "Maria Fernanda Soares Valadares": {"class": "7oA", "answers": {"1": "C", "2": "A", "3": "E", "4": "B", "5": "C", "6": "B", "7": "C", "8": "D", "9": "A", "10": "B", "11": "C", "12": "A", "13": "E", "14": "B", "15": "C", "16": "B", "17": "C", "19": "A", "20": "E", "21": "B", "22": "B", "23": "B", "24": "C", "25": "C"}}, "Mariana Moreira Cabral": {"class": "7oA", "answers": {"1": "D", "2": "D", "3": "E", "4": "C", "5": "B", "6": "B", "7": "C", "8": "D", "9": "D", "10": "A", "11": "C", "12": "A", "13": "A", "14": "B", "15": "C", "16": "C", "17": "A", "18": "D", "19": "B", "20": "E", "21": "C", "22": "C", "23": "B", "24": "D", "25": "C"}}, "Talita Leonel Castro": {"class": "7oA", "answers": {"1": "A", "2": "C", "3": "E", "4": "A", "5": "D", "6": "D", "7": "B", "8": "C", "9": "D", "10": "C", "11": "A", "12": "E", "13": "D", "14": "D", "15": "B", "16": "C", "17": "C", "18": "E", "19": "D", "20": "E", "21": "C", "22": "D", "23": "C", "24": "C", "25": "B"}}, "Yasmin Ferreira Souza": {"class": "7oA", "answers": {"1": "D", "2": "D", "3": "A", "4": "A", "5": "D", "6": "C", "7": "A", "8": "C", "9": "E", "10": "E", "11": "C", "12": "E", "13": "C", "14": "B", "15": "D", "16": "C", "17": "A", "18": "D", "19": "C", "20": "B", "21": "B", "22": "D", "23": "A", "24": "D", "25": "B"}}, "Angelus Ribeiro do Amaral": {"class": "7oV", "answers": {"1": "B", "2": "D", "3": "B", "4": "A", "5": "A", "6": "C", "7": "B", "8": "C", "9": "D", "10": "C", "11": "C", "12": "E", "13": "D", "14": "C", "15": "B", "16": "C", "17": "A", "18": "D", "19": "D", "20": "E", "21": "C", "22": "B", "23": "B", "24": "C", "25": "C"}}, "Caio Alves Ara\u00fajo de Oliveira": {"class": "7oV", "answers": {"1": "D", "2": "A", "3": "B", "4": "B", "5": "D", "6": "D", "8": "C", "9": "D", "10": "C", "12": "E", "13": "D", "14": "D", "15": "B", "19": "C", "20": "E", "21": "C", "22": "B", "23": "B", "25": "A"}}, "Davi de Carvalho Ara\u00fajo": {"class": "7oV", "answers": {"1": "A", "2": "D", "3": "B", "4": "A", "5": "E", "6": "A", "7": "A", "8": "C", "9": "C", "10": "A", "11": "A", "12": "E", "13": "E", "14": "A", "15": "B", "16": "A", "17": "A", "18": "D", "19": "D", "20": "E", "21": "C", "22": "E", "23": "B", "24": "B", "25": "B"}}, "Felipe Ferriera Requeijo": {"class": "7oV", "answers": {"1": "C", "2": "D", "3": "B", "4": "A", "5": "E", "6": "A", "7": "A", "8": "E", "9": "B", "10": "C", "11": "A", "12": "E", "13": "A", "14": "D", "15": "B", "16": "C", "17": "C", "18": "A", "19": "C", "20": "B", "21": "E", "22": "D", "23": "A", "24": "B", "25": "C"}}, "Jo\u00e3o Ara\u00fajo de Oliveira": {"class": "7oV", "answers": {"1": "B", "2": "D", "3": "A", "4": "A", "5": "D", "6": "C", "7": "B", "8": "C", "9": "D", "10": "B", "11": "A", "12": "E", "13": "D", "14": "D", "15": "B", "16": "C", "17": "C", "18": "D", "19": "C", "20": "E", "21": "A", "22": "C", "23": "B", "24": "C", "25": "E"}}, "Luca Alves Ara\u00fajo de Oliveira": {"class": "7oV", "answers": {"1": "D", "2": "D", "3": "B", "4": "A", "5": "E", "6": "C", "7": "B", "8": "C", "9": "D", "10": "C", "11": "A", "12": "E", "13": "A", "14": "D", "15": "B", "16": "A", "17": "A", "18": "D", "19": "C", "20": "E", "21": "C", "22": "B", "23": "C", "24": "B", "25": "E"}}, "Nicolas Emanuel Perez Diaz": {"class": "7oV", "answers": {"1": "A", "2": "D", "3": "B", "4": "C", "5": "D", "6": "C", "7": "A", "8": "E", "9": "D", "10": "C", "11": "A", "12": "E", "13": "E", "14": "A", "15": "B", "16": "C", "17": "A", "18": "E", "19": "C", "20": "E", "21": "C", "22": "B", "23": "B", "24": "C", "25": "C"}}, "Rafael Claro Vieira": {"class": "7oV", "answers": {"1": "A", "2": "D", "3": "B", "4": "A", "5": "A", "6": "C", "7": "D", "8": "C", "9": "D", "10": "C", "12": "E", "13": "C", "14": "B", "15": "B", "16": "C", "17": "A", "18": "E", "19": "E", "20": "C", "21": "C", "22": "B", "23": "B", "24": "B", "25": "A"}}, "Vitor Botelho Silva": {"class": "7oV", "answers": {"1": "D", "2": "D", "3": "B", "4": "C", "5": "E", "6": "C", "7": "A", "8": "C", "9": "D", "10": "B", "11": "A", "12": "E", "13": "A", "14": "A", "15": "B", "16": "C", "17": "C", "18": "D", "19": "C", "21": "C", "22": "A", "23": "B", "24": "D", "25": "D"}}};
+        
+        // Chart instances for re-rendering
+        let chartInstances = {};
+        
+        // Editable data (copy of student answers)
+        let editableData = JSON.parse(JSON.stringify(allStudents.map(s => ({
+            name: s.name,
+            class: s.class,
+            answers: {...s.answers},
+            originalAnswers: {...s.answers}
+        }))));
         
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -551,14 +724,29 @@
             renderCharts();
             renderQuestions();
             renderTags();
-            filterStudents();
+            renderEditTable();
+            applyAllFilters();
         });
+        
+        function applyAllFilters() {
+            filterStudents();
+            filterQuestions();
+            filterTags();
+            filterEditTable();
+            renderOverviewStats();
+            renderCharts();
+        }
         
         function showSection(sectionId) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.getElementById(sectionId).classList.add('active');
             event.target.classList.add('active');
+            
+            // Re-apply filters when switching tabs
+            filterStudents();
+            filterQuestions();
+            filterTags();
         }
         
         function filterStudents() {
@@ -588,6 +776,39 @@
             document.getElementById('totalCount').textContent = allStudents.length;
         }
         
+        function filterQuestions() {
+            const classFilter = document.getElementById('filterClass').value;
+            document.querySelectorAll('#questionsContent .class-section').forEach(section => {
+                const sectionClass = section.dataset.class;
+                if (classFilter === 'all' || sectionClass === classFilter) {
+                    section.style.display = 'block';
+                } else {
+                    section.style.display = 'none';
+                }
+            });
+        }
+        
+        function filterTags() {
+            const classFilter = document.getElementById('filterClass').value;
+            document.querySelectorAll('#tagsContent .class-section').forEach(section => {
+                const sectionClass = section.dataset.class;
+                if (classFilter === 'all' || sectionClass === classFilter) {
+                    section.style.display = 'block';
+                } else {
+                    section.style.display = 'none';
+                }
+            });
+        }
+        
+        function toggleStudentCard(card) {
+            // Close any other expanded cards
+            document.querySelectorAll('.student-card.expanded').forEach(c => {
+                if (c !== card) c.classList.remove('expanded');
+            });
+            // Toggle this card
+            card.classList.toggle('expanded');
+        }
+        
         function renderStudents() {
             const grid = document.getElementById('studentsGrid');
             
@@ -598,38 +819,65 @@
                 const scoreClass = s.percentage >= 70 ? 'high' : s.percentage >= 50 ? 'medium' : 'low';
                 const debugImg = `student_exams/${s.class}/debug_output/${s.name}_debug.jpg`;
                 const otsuImg = `student_exams/${s.class}/debug_output/${s.name}_otsu.jpg`;
-                const missedTags = s.missed_tags.length > 0 ? s.missed_tags.slice(0, 3).join(', ') + (s.missed_tags.length > 3 ? '...' : '') : 'None';
+                const missedPreview = s.missed_tags.length > 0 ? s.missed_tags.slice(0, 3).join(', ') + (s.missed_tags.length > 3 ? '...' : '') : 'None';
+                const missedTagsHtml = s.missed_tags.length > 0 
+                    ? s.missed_tags.map(t => `<span class="missed-tag">${t}</span>`).join('')
+                    : '<span class="no-missed">✓ No missed tags - Perfect understanding!</span>';
                 
                 return `
-                    <div class="student-card" data-class="${s.class}" data-percentage="${s.percentage}" data-name="${s.name}">
-                        <div class="student-info">
-                            <h4>${s.name}</h4>
-                            <span class="class-badge">${s.class}</span>
-                            <div class="tags"><strong>Missed:</strong> ${missedTags}</div>
+                    <div class="student-card" data-class="${s.class}" data-percentage="${s.percentage}" data-name="${s.name}" onclick="toggleStudentCard(this)">
+                        <div class="student-main">
+                            <div class="student-info">
+                                <h4>${s.name}</h4>
+                                <span class="class-badge">${s.class}</span>
+                                <div class="tags"><strong>Missed:</strong> ${missedPreview}</div>
+                            </div>
+                            <div class="student-score">
+                                <div class="score-circle ${scoreClass}">${s.percentage}%</div>
+                                <div class="score-label">${s.score}/${s.total}</div>
+                            </div>
+                            <div class="student-images">
+                                <img src="${debugImg}" onclick="event.stopPropagation(); openModal('${debugImg}')" alt="Debug" onerror="this.style.display='none'">
+                                <img src="${otsuImg}" onclick="event.stopPropagation(); openModal('${otsuImg}')" alt="Otsu" onerror="this.style.display='none'">
+                            </div>
                         </div>
-                        <div class="student-score">
-                            <div class="score-circle ${scoreClass}">${s.percentage}%</div>
-                            <div class="score-label">${s.score}/${s.total}</div>
-                        </div>
-                        <div class="student-images">
-                            <img src="${debugImg}" onclick="openModal('${debugImg}')" alt="Debug" onerror="this.style.display='none'">
-                            <img src="${otsuImg}" onclick="openModal('${otsuImg}')" alt="Otsu" onerror="this.style.display='none'">
+                        <div class="student-details">
+                            <strong>📌 All Missed Tags (${s.missed_tags.length}):</strong>
+                            <div class="missed-tags-full">
+                                ${missedTagsHtml}
+                            </div>
                         </div>
                     </div>
                 `;
             }).join('');
         }
         
+        function getFilteredStudents() {
+            const classFilter = document.getElementById('filterClass').value;
+            const scoreFilter = document.getElementById('filterScore').value;
+            const searchFilter = document.getElementById('searchStudent').value.toLowerCase();
+            
+            return allStudents.filter(s => {
+                if (classFilter !== 'all' && s.class !== classFilter) return false;
+                if (scoreFilter === 'high' && s.percentage < 70) return false;
+                if (scoreFilter === 'medium' && (s.percentage < 50 || s.percentage >= 70)) return false;
+                if (scoreFilter === 'low' && s.percentage >= 50) return false;
+                if (searchFilter && !s.name.toLowerCase().includes(searchFilter)) return false;
+                return true;
+            });
+        }
+        
         function renderOverviewStats() {
-            const totalStudents = allStudents.length;
-            const avgScore = allStudents.reduce((sum, s) => sum + s.percentage, 0) / totalStudents || 0;
-            const highPerformers = allStudents.filter(s => s.percentage >= 70).length;
-            const lowPerformers = allStudents.filter(s => s.percentage < 50).length;
+            const filtered = getFilteredStudents();
+            const totalStudents = filtered.length;
+            const avgScore = filtered.reduce((sum, s) => sum + s.percentage, 0) / totalStudents || 0;
+            const highPerformers = filtered.filter(s => s.percentage >= 70).length;
+            const lowPerformers = filtered.filter(s => s.percentage < 50).length;
             
             document.getElementById('overviewStats').innerHTML = `
                 <div class="stat-card">
                     <div class="stat-value">${totalStudents}</div>
-                    <div class="stat-label">Total Students</div>
+                    <div class="stat-label">Filtered Students</div>
                 </div>
                 <div class="stat-card success">
                     <div class="stat-value">${avgScore.toFixed(1)}%</div>
@@ -647,19 +895,27 @@
         }
         
         function renderCharts() {
-            // Score Distribution
-            const classes = Object.keys(chartData);
+            const classFilter = document.getElementById('filterClass').value;
+            const filtered = getFilteredStudents();
+            
+            // Destroy existing charts
+            Object.values(chartInstances).forEach(chart => chart.destroy());
+            chartInstances = {};
+            
+            // Determine which classes to show
+            const classes = classFilter === 'all' ? Object.keys(chartData) : [classFilter];
             const colors = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
             
-            new Chart(document.getElementById('scoreDistChart'), {
+            // Score Distribution
+            chartInstances.scoreDist = new Chart(document.getElementById('scoreDistChart'), {
                 type: 'bar',
                 data: {
                     labels: ['0-20%', '21-40%', '41-60%', '61-80%', '81-100%'],
                     datasets: classes.map((c, i) => {
-                        const scores = chartData[c].scores;
+                        const classStudents = filtered.filter(s => s.class === c);
                         const bins = [0, 0, 0, 0, 0];
-                        scores.forEach(s => {
-                            const pct = s / classData[c].total_questions * 100;
+                        classStudents.forEach(s => {
+                            const pct = s.percentage;
                             if (pct <= 20) bins[0]++;
                             else if (pct <= 40) bins[1]++;
                             else if (pct <= 60) bins[2]++;
@@ -680,13 +936,20 @@
                 }
             });
             
-            // Class Average
-            new Chart(document.getElementById('classAvgChart'), {
+            // Class Average (filtered)
+            const classAvgs = classes.map(c => {
+                const classStudents = filtered.filter(s => s.class === c);
+                return classStudents.length > 0 
+                    ? (classStudents.reduce((sum, s) => sum + s.percentage, 0) / classStudents.length).toFixed(1)
+                    : 0;
+            });
+            
+            chartInstances.classAvg = new Chart(document.getElementById('classAvgChart'), {
                 type: 'doughnut',
                 data: {
                     labels: classes,
                     datasets: [{
-                        data: classes.map(c => chartData[c].avg.toFixed(1)),
+                        data: classAvgs,
                         backgroundColor: colors
                     }]
                 },
@@ -696,19 +959,19 @@
                         legend: { position: 'right' },
                         tooltip: {
                             callbacks: {
-                                label: ctx => `${ctx.label}: ${ctx.raw} avg score`
+                                label: ctx => `${ctx.label}: ${ctx.raw}% avg`
                             }
                         }
                     }
                 }
             });
             
-            // Question Accuracy (first class only for simplicity)
-            const firstClass = classes[0];
-            const qAcc = chartData[firstClass].question_accuracy;
+            // Question Accuracy (for selected class or first class)
+            const targetClass = classes[0];
+            const qAcc = chartData[targetClass].question_accuracy;
             const qLabels = Object.keys(qAcc).sort((a, b) => parseInt(a) - parseInt(b));
             
-            new Chart(document.getElementById('questionAccChart'), {
+            chartInstances.questionAcc = new Chart(document.getElementById('questionAccChart'), {
                 type: 'bar',
                 data: {
                     labels: qLabels.map(q => 'Q' + q),
@@ -725,7 +988,7 @@
                 }
             });
             
-            // Tag Performance (combined across all classes)
+            // Tag Performance (combined across filtered classes)
             const allTags = {};
             classes.forEach(c => {
                 Object.entries(chartData[c].tag_accuracy).forEach(([tag, acc]) => {
@@ -736,7 +999,7 @@
             const tagLabels = Object.keys(allTags);
             const tagAvgs = tagLabels.map(t => allTags[t].reduce((a, b) => a + b, 0) / allTags[t].length);
             
-            new Chart(document.getElementById('tagChart'), {
+            chartInstances.tagChart = new Chart(document.getElementById('tagChart'), {
                 type: 'radar',
                 data: {
                     labels: tagLabels,
@@ -760,6 +1023,7 @@
         function renderQuestions() {
             let html = '';
             Object.entries(classData).forEach(([className, data]) => {
+                html += `<div class="class-section" data-class="${className}">`;
                 html += `<h3 style="margin: 20px 0 10px; color: #4f46e5;">${className}</h3>`;
                 html += `<table><thead><tr><th>Question</th><th>Correct</th><th>Incorrect</th><th>Accuracy</th><th>Visual</th></tr></thead><tbody>`;
                 
@@ -777,7 +1041,7 @@
                         </tr>
                     `;
                 });
-                html += '</tbody></table>';
+                html += '</tbody></table></div>';
             });
             document.getElementById('questionsContent').innerHTML = html;
         }
@@ -787,6 +1051,7 @@
             Object.entries(classData).forEach(([className, data]) => {
                 if (Object.keys(data.tag_stats).length === 0) return;
                 
+                html += `<div class="class-section" data-class="${className}">`;
                 html += `<h3 style="margin: 20px 0 10px; color: #4f46e5;">${className}</h3>`;
                 html += `<table><thead><tr><th>Tag</th><th>Correct</th><th>Incorrect</th><th>Accuracy</th><th>Visual</th></tr></thead><tbody>`;
                 
@@ -804,9 +1069,129 @@
                         </tr>
                     `;
                 });
-                html += '</tbody></table>';
+                html += '</tbody></table></div>';
             });
             document.getElementById('tagsContent').innerHTML = html || '<p>No tag data available.</p>';
+        }
+        
+        function renderEditTable() {
+            const totalQuestions = 25;
+            let html = '<table class="edit-table"><thead><tr><th class="student-col">Student</th>';
+            
+            for (let q = 1; q <= totalQuestions; q++) {
+                html += `<th>Q${q}</th>`;
+            }
+            html += '</tr></thead><tbody>';
+            
+            // Sort by class then name
+            const sorted = [...allStudents].sort((a, b) => {
+                if (a.class !== b.class) return a.class.localeCompare(b.class);
+                return a.name.localeCompare(b.name);
+            });
+            
+            sorted.forEach((student, idx) => {
+                html += `<tr data-class="${student.class}" data-name="${student.name}">`;
+                html += `<td class="student-name">${student.name}<span class="class-badge">${student.class}</span></td>`;
+                
+                for (let q = 1; q <= totalQuestions; q++) {
+                    const currentAnswer = student.answers ? student.answers[q] || '' : '';
+                    html += `<td>
+                        <select onchange="updateAnswer('${student.name}', ${q}, this.value, this)" data-original="${currentAnswer}">
+                            <option value="" ${currentAnswer === '' ? 'selected' : ''}>-</option>
+                            <option value="A" ${currentAnswer === 'A' ? 'selected' : ''}>A</option>
+                            <option value="B" ${currentAnswer === 'B' ? 'selected' : ''}>B</option>
+                            <option value="C" ${currentAnswer === 'C' ? 'selected' : ''}>C</option>
+                            <option value="D" ${currentAnswer === 'D' ? 'selected' : ''}>D</option>
+                            <option value="E" ${currentAnswer === 'E' ? 'selected' : ''}>E</option>
+                        </select>
+                    </td>`;
+                }
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            document.getElementById('editContent').innerHTML = html;
+        }
+        
+        function filterEditTable() {
+            const classFilter = document.getElementById('filterClass').value;
+            const searchFilter = document.getElementById('searchStudent').value.toLowerCase();
+            
+            document.querySelectorAll('#editContent tbody tr').forEach(row => {
+                const rowClass = row.dataset.class;
+                const name = row.dataset.name.toLowerCase();
+                
+                let show = true;
+                if (classFilter !== 'all' && rowClass !== classFilter) show = false;
+                if (searchFilter && !name.includes(searchFilter)) show = false;
+                
+                row.style.display = show ? '' : 'none';
+            });
+        }
+        
+        function updateAnswer(studentName, questionNum, newValue, selectEl) {
+            // Find and update the student in allStudents
+            const student = allStudents.find(s => s.name === studentName);
+            if (student) {
+                if (!student.answers) student.answers = {};
+                student.answers[questionNum] = newValue;
+                
+                // Mark as modified if different from original
+                const original = selectEl.dataset.original;
+                if (newValue !== original) {
+                    selectEl.classList.add('modified');
+                } else {
+                    selectEl.classList.remove('modified');
+                }
+                
+                document.getElementById('editStatus').textContent = 'Changes pending...';
+            }
+        }
+        
+        function exportResults() {
+            let csv = 'Name,Class,Score,Total,Percentage';
+            for (let q = 1; q <= 25; q++) csv += `,Q${q}`;
+            csv += '\n';
+            
+            allStudents.forEach(s => {
+                const answers = s.answers || {};
+                csv += `"${s.name}","${s.class}",${s.score},${s.total},${s.percentage}`;
+                for (let q = 1; q <= 25; q++) {
+                    csv += `,${answers[q] || ''}`;
+                }
+                csv += '\n';
+            });
+            
+            downloadFile(csv, 'exam_results_edited.csv', 'text/csv');
+            document.getElementById('editStatus').textContent = '✅ CSV exported!';
+        }
+        
+        function exportResultsJSON() {
+            const data = allStudents.map(s => ({
+                name: s.name,
+                class: s.class,
+                score: s.score,
+                total: s.total,
+                percentage: s.percentage,
+                answers: s.answers || {},
+                missed_tags: s.missed_tags
+            }));
+            
+            const json = JSON.stringify(data, null, 2);
+            downloadFile(json, 'exam_results_edited.json', 'application/json');
+            document.getElementById('editStatus').textContent = '✅ JSON exported!';
+        }
+        
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
         
         function openModal(imgSrc) {
